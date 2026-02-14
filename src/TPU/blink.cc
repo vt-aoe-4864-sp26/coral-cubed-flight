@@ -1,7 +1,7 @@
 #include <cstdio>
 
 #include "libs/base/led.h"
-#include "/third_party/freertos_kernel/include/FreeRTOS.h"
+#include "third_party/freertos_kernel/include/FreeRTOS.h"
 #include "third_party/freertos_kernel/include/task.h"
 
 extern "C" [[noreturn]] void app_main(void *param) {
