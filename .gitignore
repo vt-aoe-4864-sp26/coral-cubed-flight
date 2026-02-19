@@ -1,6 +1,9 @@
 # coraldev env
 coraldev/
 
+src/CDH/libopencm3
+src/CDH/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi
+
 # Python Scripting
 
 # Prerequisites
