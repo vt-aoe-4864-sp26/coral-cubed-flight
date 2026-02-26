@@ -27,3 +27,4 @@ halt
 program path/to/gpio.bin
 reset
 ```
+## How to enable Rx and Tx on the COM Board
