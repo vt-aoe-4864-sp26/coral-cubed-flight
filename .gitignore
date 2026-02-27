@@ -51,3 +51,9 @@ build/
 
 # debug information files
 *.dwo
+
+# flash files
+*.hex
+*.elf
+*.ld
+*.bin

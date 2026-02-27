@@ -34,6 +34,68 @@
 #define NVMC_READY MMIO32(NVMC_BASE + 0x400)
 #define NVMC_READY_BUSY (0     )
 
+// radio mmio definitions
+#define RADIO_BASE        0x40001000
+#define RADIO_TASKS_TXEN  MMIO32(RADIO_BASE + 0x004)
+#define RADIO_TASKS_START MMIO32(RADIO_BASE + 0x008)
+#define RADIO_EVENTS_READY MMIO32(RADIO_BASE + 0x100)
+#define RADIO_EVENTS_END  MMIO32(RADIO_BASE + 0x10C)
+#define RADIO_PACKETPTR   MMIO32(RADIO_BASE + 0x504)
+#define RADIO_FREQUENCY   MMIO32(RADIO_BASE + 0x508)
+#define RADIO_TXPOWER     MMIO32(RADIO_BASE + 0x50C)
+#define RADIO_MODE        MMIO32(RADIO_BASE + 0x510)
+#define RADIO_PCNF0       MMIO32(RADIO_BASE + 0x514)
+#define RADIO_PCNF1       MMIO32(RADIO_BASE + 0x518)
+#define RADIO_BASE0       MMIO32(RADIO_BASE + 0x51C)
+#define RADIO_PREFIX0     MMIO32(RADIO_BASE + 0x524)
+#define RADIO_TXADDRESS   MMIO32(RADIO_BASE + 0x52C)
+#define RADIO_CRCCNF      MMIO32(RADIO_BASE + 0x534)
+
+// our test payload
+uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
+
+void init_radio_tx_test(void) {
+  // 0 = 1mbit nordic proprietary mode
+  RADIO_MODE = 0; 
+  // 2400 + 40 = 2440 mhz channel
+  RADIO_FREQUENCY = 40; 
+  // 0 dbm tx power (nrf52833 can go up to +8)
+  RADIO_TXPOWER = 0; 
+
+  // basic packet config: 8 bit length field
+  RADIO_PCNF0 = (0 << 16) | (1 << 8) | (8 << 0);
+  // max payload 255, base address length 4 bytes
+  RADIO_PCNF1 = (255 << 16) | (255 << 8) | (4 << 0);
+
+  // set dummy sync word / address
+  RADIO_BASE0 = 0x01234567;
+  RADIO_PREFIX0 = 0x89;
+  // use logical address 0
+  RADIO_TXADDRESS = 0; 
+
+  // disable crc to just push raw bytes
+  RADIO_CRCCNF = 0; 
+}
+
+void blast_noise(void) {
+  // give the radio the memory address of our array
+  RADIO_PACKETPTR = (uint32_t)dummy_packet;
+
+  // spin up the radio in tx mode
+  RADIO_TASKS_TXEN = 1;
+
+  // wait for the pll to lock and radio to be ready
+  while (RADIO_EVENTS_READY == 0) {}
+  RADIO_EVENTS_READY = 0;
+
+  // start transmission
+  RADIO_TASKS_START = 1;
+
+  // wait for the packet to finish sending
+  while (RADIO_EVENTS_END == 0) {}
+  RADIO_EVENTS_END = 0;
+}
+
 // Utility functions
 
 void flash_erase_page(uint32_t page) {
@@ -57,17 +119,27 @@ void flash_erase_page(uint32_t page) {
 // are strictly increasing, i.e. each subsequent byte is strictly greater than
 // the previous byte
 int handle_common_data(common_data_t common_data_buff_i) {
-  int strictly_increasing = 1;
-  uint8_t prev_byte = common_data_buff_i.data[0];
-  for(size_t i=1; i<common_data_buff_i.end_index; i++) {
-    if(prev_byte>=common_data_buff_i.data[i]) {
-      strictly_increasing = 0;
-      i = common_data_buff_i.end_index;
-    } else {
-      prev_byte = common_data_buff_i.data[i];
-    }
+  // fail if payload is empty
+  if(common_data_buff_i.end_index == 0) {
+    return 0; 
   }
-  return strictly_increasing;
+
+  uint8_t action = common_data_buff_i.data[0];
+
+  if(action == 0x01) {
+    // enable tx, disable rx
+    gpio_clear(P0, RX_EN_PIN);
+    gpio_set(P0, TX_EN_PIN);
+    return 1;
+  } else if(action == 0x02) {
+    // enable rx, disable tx
+    gpio_clear(P0, TX_EN_PIN);
+    gpio_set(P0, RX_EN_PIN);
+    return 1;
+  }
+
+  // unknown command
+  return 0; 
 }
 
 // This example implementation of handle_bootloader_erase erases the portion of

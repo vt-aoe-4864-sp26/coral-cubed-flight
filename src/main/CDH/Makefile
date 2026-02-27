@@ -2,7 +2,7 @@ PROJECT = com
 BUILD_DIR = build
 
 #SUPPORT_DIR = ./support
-CFILES = com_main.c
+CFILES = cdh_main.c
 CFILES += # SUPPORT_DIR C files
 
 # Edit these two lines as needed

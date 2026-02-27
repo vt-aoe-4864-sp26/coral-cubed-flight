@@ -13,6 +13,11 @@
 #include <tab.h> // common_data_t, rx_cmd_buff_t, tx_cmd_buff_t
 
 // Macros
+//// Pin Definitions
+#define RF_FRONTEND_PIN GPIO9
+#define TX_EN_PIN       GPIO3
+#define RX_EN_PIN       GPIO2
+
 
 //// Byte counts
 #define BYTES_PER_BLR_PLD    ((uint32_t)128)
