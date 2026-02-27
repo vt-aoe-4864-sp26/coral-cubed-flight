@@ -120,7 +120,7 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
   }
 }
 
-//// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply
+// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply
 void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
   if(
    rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE &&

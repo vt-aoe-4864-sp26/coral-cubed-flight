@@ -6,6 +6,8 @@ src/examples/CDH/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi
 src/examples/COM/libopencm3
 make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi
 
+build/
+
 # Python Scripting
 
 # Prerequisites
