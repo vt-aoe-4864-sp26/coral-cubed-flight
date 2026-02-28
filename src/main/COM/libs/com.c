@@ -13,6 +13,7 @@
 #include <libopencm3/nrf/clock.h> // used in init_clock
 #include <libopencm3/nrf/gpio.h>  // used in init_gpio
 #include <libopencm3/nrf/uart.h>  // used in init_uart
+#include <libopencm3/nrf/52/radio.h>
 
 // Board-specific header
 #include <com.h>                    // COM header
@@ -34,135 +35,35 @@
 #define NVMC_READY MMIO32(NVMC_BASE + 0x400)
 #define NVMC_READY_BUSY (0     )
 
-// radio mmio definitions
-#define RADIO_BASE 0x40001000
-#define RADIO_REG(offset) MMIO32(RADIO_BASE + (offset))
-// radio offsets
-#define TASKS_TXEN 0x000    // Enable RADIO in TX mode
-#define TASKS_RXEN 0x004    // Enable RADIO in RX mode
-#define TASKS_START 0x008  // Start RADIO
-#define TASKS_STOP 0x00C    // Stop RADIO
-#define TASKS_DISABLE 0x010 // Disable RADIO
-#define TASKS_RSSISTART 0x014 // Start the RSSI and take one single sample of the receive signal strength
-#define TASKS_RSSISTOP 0x018 // Stop the RSSI measurement
-#define TASKS_BCSTART 0x01C // Start the bit counter
-#define TASKS_BCSTOP 0x020 // Stop the bit counter
-#define TASKS_EDSTART 0x024 // Start the energy detect measurement used in IEEE 802.15.4 mode
-#define TASKS_EDSTOP 0x028 // Stop the energy detect measurement
-#define TASKS_CCASTART 0x02C // Start the clear channel assessment used in IEEE 802.15.4 mode
-#define TASKS_CCASTOP 0x030 // Stop the clear channel assessment
-#define EVENTS_READY 0x100 // RADIO has ramped up and is ready to be started
-#define EVENTS_ADDRESS 0x104 // Address sent or received
-#define EVENTS_PAYLOAD 0x108 // Packet payload sent or received
-#define EVENTS_END 0x10C // Packet sent or received
-#define EVENTS_DISABLED 0x110 // RADIO has been disabled
-#define EVENTS_DEVMATCH 0x114 // A device address match occurred on the last received packet
-#define EVENTS_DEVMISS 0x118 // No device address match occurred on the last received packet
-#define EVENTS_RSSIEND 0x11C // Sampling of receive signal strength complete
-#define EVENTS_BCMATCH 0x128 // Bit counter reached bit count value
-#define EVENTS_CRCOK 0x130 // Packet received with CRC ok
-#define EVENTS_CRCERROR 0x134 // Packet received with CRC error
-#define EVENTS_FRAMESTART 0x138 // IEEE 802.15.4 length field received
-#define EVENTS_EDEND 0x13C // Sampling of energy detection complete.
-#define EVENTS_EDSTOPPED 0x140 //The sampling of energy detection has stopped
-#define EVENTS_CCAIDLE 0x144 // Wireless medium in idle - clear to send
-#define EVENTS_CCABUSY 0x148 // Wireless medium busy - do not send
-#define EVENTS_CCASTOPPED 0x14C //The CCA has stopped
-#define EVENTS_RATEBOOST 0x150 //Ble_LR CI field received, receive mode is changed from Ble_LR125Kbit to Ble_LR500Kbit.
-#define EVENTS_TXREADY 0x154 //RADIO has ramped up and is ready to be started TX path
-#define EVENTS_RXREADY 0x158 //RADIO has ramped up and is ready to be started RX path
-#define EVENTS_MHRMATCH 0x15C //MAC header match found
-#define EVENTS_SYNC 0x168 //Preamble indicator
-#define EVENTS_PHYEND 0x16C //Generated when last bit is sent on air, or received from air
-#define EVENTS_CTEPRESENT 0x170 //CTE is present (early warning right after receiving CTEInfo byte)
-#define SHORTS 0x200 //Shortcuts between local events and tasks
-#define INTENSET 0x304 //Enable interrupt
-#define INTENCLR 0x308 //Disable interrupt
-#define CRCSTATUS 0x400 //CRC status
-#define RXMATCH 0x408 //Received address
-#define RXCRC 0x40C //CRC field of previously received packet
-#define DAI 0x410 //Device address match index
-#define PDUSTAT 0x414 //Payload status
-#define CTESTATUS 0x44C //CTEInfo parsed from received packet
-#define DFESTATUS 0x458 //DFE status information
-#define PACKETPTR 0x504 //Packet pointer
-#define FREQUENCY 0x508 //Frequency
-#define TXPOWER 0x50C //Output power
-#define MODE 0x510// Data rate and modulation
-#define PCNF0 0x514 //Packet configuration register 0
-#define PCNF1 0x518 //Packet configuration register 1
-#define BASE0 0x51C //Base address 0
-#define BASE1 0x520 //Base address 1
-#define PREFIX0 0x524 //Prefixes bytes for logical addresses 0-3
-#define PREFIX1 0x528 //Prefixes bytes for logical addresses 4-7
-#define TXADDRESS 0x52C //Transmit address select
-#define RXADDRESSES 0x530 //Receive address select
-#define CRCCNF 0x534 //CRC configuration
-#define CRCPOLY 0x538 //CRC polynomial
-#define CRCINIT 0x53C //CRC initial value
-#define TIFS 0x544 //Interframe spacing in μs
-#define RSSISAMPLE 0x548 //RSSI sample
-#define STATE 0x550 //Current radio state
-#define DATAWHITEIV 0x554 //Data whitening initial value
-#define BCC 0x560 //Bit counter compare
-#define DAB[n] 0x600 //Device address base segment n
-#define DAP[n] 0x620 //Device address prefix n
-#define DACNF 0x640 //Device address match configuration
-#define MHRMATCHCONF 0x644 //Search pattern configuration
-#define MHRMATCHMAS 0x648 //Pattern mask
-#define MODECNF0 0x650 //Radio mode configuration register 0
-#define SFD 0x660 //IEEE 802.15.4 start of frame delimiter
-#define EDCNT 0x664 //IEEE 802.15.4 energy detect loop count
-#define EDSAMPLE 0x668 //IEEE 802.15.4 energy detect level
-#define CCACTRL 0x66C //IEEE 802.15.4 clear channel assessment control
-#define DFEMODE 0x900 //Whether to use Angle-of-Arrival (AOA) or Angle-of-Departure (AOD)
-#define CTEINLINECONF 0x904 //Configuration for CTE inline mod
-#define POWER 0xFFC // Periphal Power
 
-
-// our test payload
 uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 
 void init_radio_tx_test(void) {
-  // 0 = 1mbit nordic proprietary mode
   RADIO_MODE = 0; 
-  // 2400 + 40 = 2440 mhz channel
   RADIO_FREQUENCY = 40; 
-  // 0 dbm tx power (nrf52833 can go up to +8)
   RADIO_TXPOWER = 0; 
-
-  // basic packet config: 8 bit length field
   RADIO_PCNF0 = (0 << 16) | (1 << 8) | (8 << 0);
-  // max payload 255, base address length 4 bytes
   RADIO_PCNF1 = (255 << 16) | (255 << 8) | (4 << 0);
-
-  // set dummy sync word / address
   RADIO_BASE0 = 0x01234567;
   RADIO_PREFIX0 = 0x89;
-  // use logical address 0
   RADIO_TXADDRESS = 0; 
-
-  // disable crc to just push raw bytes
   RADIO_CRCCNF = 0; 
 }
 
 void blast_noise(void) {
-  // give the radio the memory address of our array
   RADIO_PACKETPTR = (uint32_t)dummy_packet;
 
-  // spin up the radio in tx mode
-  RADIO_TASKS_TXEN = 1;
+  RADIO_TASK_TXEN = 1;
+  while (RADIO_EVENT_READY == 0) {}
+  RADIO_EVENT_READY = 0;
 
-  // wait for the pll to lock and radio to be ready
-  while (RADIO_EVENTS_READY == 0) {}
-  RADIO_EVENTS_READY = 0;
+  RADIO_TASK_START = 1;
+  while (RADIO_EVENT_END == 0) {}
+  RADIO_EVENT_END = 0;
 
-  // start transmission
-  RADIO_TASKS_START = 1;
-
-  // wait for the packet to finish sending
-  while (RADIO_EVENTS_END == 0) {}
-  RADIO_EVENTS_END = 0;
+  RADIO_TASK_DISABLE = 1;
+  while (RADIO_EVENT_DISABLED == 0) {}
+  RADIO_EVENT_DISABLED = 0;
 }
 
 // Utility functions
@@ -187,25 +88,7 @@ void flash_erase_page(uint32_t page) {
 int handle_common_data(common_data_t common_data_buff_i) {
   // fail if payload is empty
   if(common_data_buff_i.end_index == 0) {
-    return 0; 
-  }
-
-  // first check if payload bytes are strictly increasing
-  int strictly_increasing = 1;
-  uint8_t prev_byte = common_data_buff_i.data[0];
-  
-  for(size_t i=1; i<common_data_buff_i.end_index; i++) {
-    if(prev_byte >= common_data_buff_i.data[i]) {
-      strictly_increasing = 0;
-      break; 
-    } else {
-      prev_byte = common_data_buff_i.data[i];
-    }
-  }
-
-  // reject if it failed the check
-  if(!strictly_increasing) {
-    return 0;
+  // fail if payload is empty
   }
 
   // now handle the actual command action
@@ -233,14 +116,10 @@ int handle_common_data(common_data_t common_data_buff_i) {
     blast_noise();
     return 1;
   }
-
   // unknown command
   return 0; 
 }
 
-// This example implementation of handle_common_data checks whether the bytes
-// are strictly increasing, i.e. each subsequent byte is strictly greater than
-// the previous byte
 
 // This example implementation of handle_bootloader_erase erases the portion of
 // Flash accessible to bootloader_write_page

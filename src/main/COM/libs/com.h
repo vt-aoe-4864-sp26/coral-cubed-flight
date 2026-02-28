@@ -56,5 +56,7 @@ void init_uart(void);
 void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o);
 void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o);
+void init_radio_tx_test(void);
+void blast_noise(void);
 
 #endif
