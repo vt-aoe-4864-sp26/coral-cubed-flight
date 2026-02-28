@@ -33,11 +33,15 @@ git submodule update --init --recursive
 
 echo -e "${GREEN}--- Fetching Toolchain for Build and Flash of Starbelt PCB Software---${NC}"
 (
-cd make ||{ echo -e "${RED}Failed to find make tools dir${NC}"; exit 1; }
-wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-cd ..
+if [ ! -d "make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi" ]; then
+    cd make ||{ echo -e "${RED}Failed to find make tools dir${NC}"; exit 1; }
+    wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+    tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+    rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+    cd ..
+else
+    echo "Starbelt toolchain in place already, skipping wget."
+fi
 ) 
 
 echo -e "${GREEN}--- Setting up Coralmicro Submodules and Building Dependencies ---${NC}"
@@ -55,5 +59,5 @@ EOF
 
     # Setup and build coralmicro
     # will ask for sudo password
-    bash setup.bsh
+    bash setup.sh
     bash build.sh
