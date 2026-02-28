@@ -38,7 +38,7 @@ wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-
 tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
 rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
 cd ..
-) || {echo -e "complier toolchain not fetched/unzipped";}
+) 
 
 echo -e "${GREEN}--- Setting up Coralmicro Submodules and Building Dependencies ---${NC}"
 
