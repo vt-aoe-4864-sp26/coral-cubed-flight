@@ -35,6 +35,9 @@
 #define NVMC_READY_BUSY (0     )
 
 // radio mmio definitions
+#define RADIO_BASE 0x40001000
+#define RADIO_REG(offset) MMIO32(RADIO_BASE + (offset))
+// radio offsets
 #define TASKS_TXEN 0x000    // Enable RADIO in TX mode
 #define TASKS_RXEN 0x004    // Enable RADIO in RX mode
 #define TASKS_START 0x008  // Start RADIO
@@ -181,15 +184,31 @@ void flash_erase_page(uint32_t page) {
 
 // Functions required by TAB
 
-// This example implementation of handle_common_data checks whether the bytes
-// are strictly increasing, i.e. each subsequent byte is strictly greater than
-// the previous byte
 int handle_common_data(common_data_t common_data_buff_i) {
   // fail if payload is empty
   if(common_data_buff_i.end_index == 0) {
     return 0; 
   }
 
+  // first check if payload bytes are strictly increasing
+  int strictly_increasing = 1;
+  uint8_t prev_byte = common_data_buff_i.data[0];
+  
+  for(size_t i=1; i<common_data_buff_i.end_index; i++) {
+    if(prev_byte >= common_data_buff_i.data[i]) {
+      strictly_increasing = 0;
+      break; 
+    } else {
+      prev_byte = common_data_buff_i.data[i];
+    }
+  }
+
+  // reject if it failed the check
+  if(!strictly_increasing) {
+    return 0;
+  }
+
+  // now handle the actual command action
   uint8_t action = common_data_buff_i.data[0];
 
   if(action == 0x01) {
@@ -202,11 +221,26 @@ int handle_common_data(common_data_t common_data_buff_i) {
     gpio_clear(P0, TX_EN_PIN);
     gpio_set(P0, RX_EN_PIN);
     return 1;
+  } else if(action == 0x03) {
+    // enable tx pin for nrf21540
+    gpio_clear(P0, RX_EN_PIN);
+    gpio_set(P0, TX_EN_PIN);
+    
+    // wait a tiny bit for the pa to power up
+    for(volatile int i=0; i<100; i++); 
+
+    // send the dummy packet
+    blast_noise();
+    return 1;
   }
 
   // unknown command
   return 0; 
 }
+
+// This example implementation of handle_common_data checks whether the bytes
+// are strictly increasing, i.e. each subsequent byte is strictly greater than
+// the previous byte
 
 // This example implementation of handle_bootloader_erase erases the portion of
 // Flash accessible to bootloader_write_page
