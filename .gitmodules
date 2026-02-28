@@ -1,6 +1,6 @@
 [submodule "coralmicro"]
-	path = coralmicro
+	path = third-party/coralmicro
 	url = https://github.com/google-coral/coralmicro.git
 [submodule "libopencm3"]
-	path = libopencm3
+	path = third-party/libopencm3
 	url = https://github.com/libopencm3/libopencm3.git
