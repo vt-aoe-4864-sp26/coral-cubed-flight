@@ -2,11 +2,11 @@
 // TAB serial communication protocol header file
 //
 // Written by Bradley Denby
-// Other contributors: Chad Taylor
+// Other contributors: Chad Taylor, Jack Rathert
 //
 // See the top-level LICENSE file for the license.
 
-#ifndef TAB_H
+#define TAB_H
 #define TAB_H
 
 // Standard library
@@ -16,10 +16,12 @@
 // Macros
 
 //// General
-#define CMD_MAX_LEN  ((size_t)258)
-#define PLD_MAX_LEN  ((size_t)249)
-#define START_BYTE_0 ((uint8_t)0x22)
-#define START_BYTE_1 ((uint8_t)0x69)
+#define CMD_MAX_LEN  ((size_t)258) // opcode
+#define PLD_MAX_LEN  ((size_t)249) // payload 
+#define START_BYTE_0 ((const uint8_t)0x22) // static start byte
+#define START_BYTE_1 ((const uint8_t)0x69) // static start byte
+
+#define SAT_HWID     ((uint8_t))
 
 //// Opcodes
 #define COMMON_ACK_OPCODE                   ((uint8_t)0x10)
@@ -89,6 +91,7 @@ typedef struct rx_cmd_buff {
   size_t              start_index;       // Index of next byte to be buffered
   size_t              end_index;         // data[i] valid for i<end_index
   const size_t        size;              // rx_cmd_buff_t b={.size=CMD_MAX_LEN};
+  uint8_t             route_id;          // what board does this belong to
   uint8_t             data[CMD_MAX_LEN]; // Command bytes
 } rx_cmd_buff_t;
 

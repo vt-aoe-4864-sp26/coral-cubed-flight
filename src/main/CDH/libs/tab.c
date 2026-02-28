@@ -2,7 +2,7 @@
 // TAB serial communication protocol header file
 //
 // Written by Bradley Denby
-// Other contributors: Chad Taylor
+// Other contributors: Chad Taylor, Jack Rathert
 //
 // See the top-level LICENSE file for the license.
 
@@ -24,7 +24,7 @@ extern int bootloader_active(void);
 
 // Helper functions
 
-//// Clears rx_cmd_buff data and resets state and indices
+// Clears rx_cmd_buff data and resets state and indices
 void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o) {
   rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_START_BYTE_0;
   rx_cmd_buff_o->start_index = 0;
@@ -34,7 +34,7 @@ void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o) {
   }
 }
 
-//// Clears tx_cmd_buff data and resets state and indices
+// Clears tx_cmd_buff data and resets state and indices
 void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
   tx_cmd_buff_o->empty = 1;
   tx_cmd_buff_o->start_index = 0;
@@ -46,7 +46,7 @@ void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
 
 // Protocol functions
 
-//// Attempts to push byte to end of rx_cmd_buff
+// Attempts to push byte to end of rx_cmd_buff
 void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
   switch(rx_cmd_buff_o->state) {
     case RX_CMD_BUFF_STATE_START_BYTE_0:
@@ -91,7 +91,16 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
       break;
     case RX_CMD_BUFF_STATE_ROUTE:
       rx_cmd_buff_o->data[ROUTE_INDEX] = b;
-      rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
+      
+      // grab the high nibble (destination id)
+      uint8_t dest_id = (b & 0xf0) >> 4;
+      
+      // only proceed if the message is for us
+      if(dest_id == rx_cmd_buff_o->route_id) {
+        rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
+      } else {
+        clear_rx_cmd_buff(rx_cmd_buff_o);
+      }
       break;
     case RX_CMD_BUFF_STATE_OPCODE: // no check for valid opcodes (too much)
       rx_cmd_buff_o->data[OPCODE_INDEX] = b;
@@ -120,7 +129,7 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
   }
 }
 
-//// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply
+// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply
 void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
   if(
    rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE &&
@@ -273,7 +282,7 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
   }
 }
 
-//// Attempts to pop byte from beginning of tx_cmd_buff
+// Attempts to pop byte from beginning of tx_cmd_buff
 uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
   uint8_t b = 0;
   if(

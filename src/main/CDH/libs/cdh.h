@@ -2,7 +2,7 @@
 // CDH board support header file
 //
 // Written by Bradley Denby
-// Other contributors: Chad Taylor, Alok Anand
+// Other contributors: Chad Taylor, Alok Anand, Jack Rathert
 //
 // See the top-level LICENSE file for the license.
 
@@ -26,6 +26,13 @@
 
 //// SRAM1 size
 #define SRAM1_SIZE ((uint32_t)0x00040000U)
+
+// UART common_data handles
+#define VAR_CODE_CORAL_WAKE    ((uint8_t)0x01)
+#define VAR_CODE_CORAL_CAM_ON  ((uint8_t)0x02)
+#define VAR_CODE_CORAL_INFER   ((uint8_t)0x03)
+#define VAR_CODE_TLM_REQ       ((uint8_t)0x04)
+
 
 // Functions required by TAB
 
