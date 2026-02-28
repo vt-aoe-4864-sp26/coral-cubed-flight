@@ -1,40 +1,57 @@
 // cdh.h
 // CDH board support header file
 //
-// Written by Bradley Denby
-// Other contributors: Chad Taylor, Alok Anand, Jack Rathert
+// Written by Jack Rathert
+// Other contributors: Bradley Denby, Chad Taylor, Alok Anand, Jack Rathert
 //
 // See the top-level LICENSE file for the license.
 
 #ifndef CDH_H
 #define CDH_H
 
-// TAB header
-#include <tab.h> // common_data_t, rx_cmd_buff_t, tx_cmd_buff_t
+// TAB header //
+#include <tab.h>
 
-// Macros
+// Macros //
 
-//// Byte counts
+// ========== Pin Definitions ========== //
+
+#define LED1                GPIO2   // PB
+#define LED2                GPIO1   // PB
+#define COM_EN_PIN          GPIO6   // PC
+#define PAY_EN_PIN          GPIO7   // PC
+#define EXT_GONE            GPIO15  // PA
+
+
+// ========== Byte counts
 #define BYTES_PER_BLR_PLD    ((uint32_t)128)
 #define BYTES_PER_FLASH_PAGE ((uint32_t)2048)
 
-//// Start of application address space
+// ========== Start of application address space
 #define APP_ADDR   ((uint32_t)0x08008000U)
 
-//// SRAM1 start address
+// ========== SRAM1 start address
 #define SRAM1_BASE ((uint32_t)0x20000000U)
 
-//// SRAM1 size
+// ========== SRAM1 size
 #define SRAM1_SIZE ((uint32_t)0x00040000U)
 
-// UART common_data handles
-#define VAR_CODE_CORAL_WAKE    ((uint8_t)0x01)
-#define VAR_CODE_CORAL_CAM_ON  ((uint8_t)0x02)
-#define VAR_CODE_CORAL_INFER   ((uint8_t)0x03)
-#define VAR_CODE_TLM_REQ       ((uint8_t)0x04)
 
+// ========== UART common_data handles ========== //
+#define VAR_CODE_COM_EN         ((uint8_t)0x01)
+#define VAR_CODE_PAY_EN         ((uint8_t)0x02)
 
-// Functions required by TAB
+// ========== COM Commands
+#define VAR_CODE_RF_EN          ((uint8_t)0x03)
+#define VAR_CODE_RF_TX          ((uint8_t)0x04)
+#define VAR_CODE_RF_RX          ((uint8_t)0x01)
+
+//========== Payload Commands
+#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x05)
+#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x06)
+#define VAR_CODE_CORAL_INFER    ((uint8_t)0x07)
+
+// ========== Functions Required by TAB/OpenLST Protocols ========== // 
 
 int handle_common_data(common_data_t common_data_buff_i);
 int handle_bootloader_erase(void);
@@ -43,13 +60,18 @@ int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff);
 int handle_bootloader_jump(void);
 int bootloader_active(void);
 
-// Board initialization functions
+// ========== Board Initialization ========== //
 
 void init_clock(void);
 void init_leds(void);
 void init_uart(void);
 
-// Feature functions
+// ========== CDH Functions ========== //
+
+void init_com(void);
+void init_rf(void);
+void init_pay(void);
+
 
 void rx_usart1(rx_cmd_buff_t* rx_cmd_buff_o);
 void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);

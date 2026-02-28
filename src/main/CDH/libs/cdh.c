@@ -23,9 +23,13 @@
 
 // Functions required by TAB
 
-// This example implementation of handle_common_data checks whether the bytes
-// are strictly increasing, i.e. each subsequent byte is strictly greater than
-// the previous byte
+// The GOAT HANDLE_COMMON_DATA // 
+
+// This function utilizes the OpenLST HANDLE_COMMON_DATA Opcode
+// It expects to recieve a payload of the form [var_code var_len val_ptr]
+// These can be utilized to save things from the UART buffer and execute different onboard
+// behevaiors. Define new VAR_CODEs in cdh.h
+
 int handle_common_data(common_data_t common_data_buff_i) {
   // need at least type and length bytes
   if(common_data_buff_i.end_index < 2) {
@@ -44,19 +48,51 @@ int handle_common_data(common_data_t common_data_buff_i) {
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
   switch(var_code) {
-    case VAR_CODE_CORAL_WAKE:
-      // code to wake up the tpu
+
+    case VAR_CODE_COM_EN:
+      // val_ptr=1 Drives IC high on EPS to enable power to COM PCB
       break;
 
-    case VAR_CODE_CORAL_CAM_ON:
-      // forward command to coral to turn on the camera
-      // val_ptr could hold camera config data if var_len > 0
+    case VAR_CODE_PAY_EN:
+      // val_ptr=1 Drives IC high on EPS to enable power to PAY PCB
+      // val_ptr could hold the model id or settings
+      if (&val_ptr == 1){
+        
+
+      };
       break;
 
-    case VAR_CODE_CORAL_INFER:
+    case VAR_CODE_RF_EN:
+      // val_ptr=1 to passthrough CDH to COM to enable RF Frontend
+      // val_ptr could hold the model id or settings
+      break;
+
+    case VAR_CODE_RF_TX:
+      // val_ptr=1 to passthrough CDH to COM to enable RF Transmission
       // tell coral to run the inference
       // val_ptr could hold the model id or settings
       break;
+
+    case VAR_CODE_RF_RX:
+
+      break;
+
+    case VAR_CODE_CORAL_WAKE:
+
+      break;
+
+    case VAR_CODE_CORAL_CAM_ON:
+
+      break;
+
+    case VAR_CODE_CORAL_INFER:
+
+      break;
+
+    // case VAR_CODE_:
+    //   // tell coral to run the inference
+    //   // val_ptr could hold the model id or settings
+    //   break;
 
     default:
       // unknown command code
@@ -98,11 +134,12 @@ void init_clock(void) {
 }
 
 void init_leds(void) {
+  // inits both LEDs, defaults LED1 on
   rcc_periph_clock_enable(RCC_GPIOB);
-  gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
-  gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO2);
-  gpio_set(  GPIOB, GPIO2); // LED1 is B2
-  gpio_clear(GPIOB, GPIO1); // LED2 is B1
+  gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED1);
+  gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED2);
+  gpio_set(GPIOB, LED1);
+  gpio_clear(GPIOB, LED2);
 }
 
 void init_uart(void) {
@@ -119,6 +156,21 @@ void init_uart(void) {
   usart_set_parity(USART1,USART_PARITY_NONE);
   usart_set_flow_control(USART1,USART_FLOWCONTROL_NONE);
   usart_enable(USART1);
+}
+
+void init_gpio(void){
+
+  // Open Ports B & C // 
+  rcc_periph_clock_enable(RCC_GPIOB);
+  rcc_periph_clock_enable(RCC_GPIOC);
+
+    // GPIO Initialization //
+  gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, PAY_EN_PIN);
+  gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, COM_EN_PIN);
+
+  // Default Low //
+  gpio_clear(GPIOC, PAY_EN_PIN);
+  gpio_clear(GPIOC, COM_EN_PIN);
 }
 
 // Feature functions

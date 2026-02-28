@@ -29,7 +29,7 @@ int main(void) {
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
   
-  // // default: frontend on, rx enabled, tx disabled
+  // default: frontend on, rx enabled, tx disabled
   // gpio_set(P1, RF_FRONTEND_PIN);
   // gpio_clear(P0, TX_EN_PIN);
   // gpio_set(P0, RX_EN_PIN);
@@ -53,13 +53,13 @@ int main(void) {
     // blast white noise for SDR
     gpio_toggle(P0, TX_EN_PIN);
     blast_noise();
-  //   // get packet
+  //    get packet
   //   rx_uart(&rx_cmd_buff);
     
-  //   // parse and execute (0x16 opcode -> 0x03 action triggers burst)
+  //   parse and execute (0x16 opcode -> 0x03 action triggers burst)
   //   reply(&rx_cmd_buff, &tx_cmd_buff);
     
-  //   // send response
+  //   send response
   //   tx_uart(&tx_cmd_buff);
   }
 

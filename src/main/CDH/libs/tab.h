@@ -6,7 +6,7 @@
 //
 // See the top-level LICENSE file for the license.
 
-#define TAB_H
+#ifndef TAB_H
 #define TAB_H
 
 // Standard library
@@ -78,14 +78,14 @@ typedef enum rx_cmd_buff_state {
   RX_CMD_BUFF_STATE_COMPLETE     = ((uint8_t)0x0a)
 } rx_cmd_buff_state_t;
 
-//// Common Data buffer
+// Common Data buffer
 typedef struct common_data_buff {
   size_t       end_index;         // data[i] valid for i<end_index
   const size_t size;              // common_data_t b={.size=PLD_MAX_LEN};
   uint8_t      data[PLD_MAX_LEN]; // Payload bytes
 } common_data_t;
 
-//// RX command buffer
+// RX command buffer
 typedef struct rx_cmd_buff {
   rx_cmd_buff_state_t state;             // See enum rx_cmd_buff_state
   size_t              start_index;       // Index of next byte to be buffered
@@ -95,7 +95,7 @@ typedef struct rx_cmd_buff {
   uint8_t             data[CMD_MAX_LEN]; // Command bytes
 } rx_cmd_buff_t;
 
-//// TX command buffer
+// TX command buffer
 typedef struct tx_cmd_buff {
   int          empty;             // Whether or not tx_cmd_buff contains a cmd
   size_t       start_index;       // Index of next byte to be sent
@@ -106,21 +106,21 @@ typedef struct tx_cmd_buff {
 
 // Helper functions
 
-//// Clears rx_cmd_buff data and resets state and indices
+// Clears rx_cmd_buff data and resets state and indices //
 void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o);
 
-//// Clears tx_cmd_buff data and resets state and indices
+// Clears tx_cmd_buff data and resets state and indices //
 void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
 
 // Protocol functions
 
-//// Attempts to push byte to end of rx_cmd_buff
+// Attempts to push byte to end of rx_cmd_buff //
 void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b);
 
-//// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply
+// Attempts to clear rx_cmd_buff and populate tx_cmd_buff with reply //
 void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 
-//// Attempts to pop byte from beginning of tx_cmd_buff
+// Attempts to pop byte from beginning of tx_cmd_buff //
 uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
 
 #endif
