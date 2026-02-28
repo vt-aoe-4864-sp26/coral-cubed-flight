@@ -21,7 +21,7 @@ int main(void) {
   while(1) {
     rx_usart1(&rx_cmd_buff);           // Collect command bytes
     reply(&rx_cmd_buff, &tx_cmd_buff); // Command reply logic
-    tx_usart1(&tx_cmd_buff);           // Send a response if any
+    tx_usart1(&tx_cmd_buff);           // Send a response if anygcc
   }
   // Should never reach this point
   return 0;

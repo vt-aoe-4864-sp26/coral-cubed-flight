@@ -1,0 +1,42 @@
+{
+    "configurations": [
+        {
+            "name": "ARM Embedded",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/third-party/libopencm3/include",
+                "${workspaceFolder}/make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/arm-none-eabi/include"
+            ],
+            "defines": [
+                "STM32L4",
+                "NRF52",
+                "__ARM_FEATURE_DSP"
+            ],
+            "compilerPath": "${workspaceFolder}/make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-gcc",
+            "cStandard": "c99",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "gcc-arm",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${workspaceFolder}/third-party/libopencm3/include",
+                    "${workspaceFolder}/make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/arm-none-eabi/include"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
+        },
+        {
+            "name": "Linux (Fallback)",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4,
+    "comments": "This configuration uses the ARM EABI cross-compiler to provide proper IntelliSense and symbol resolution for embedded development. The 'ARM Embedded' configuration is set as the primary configuration."
+}
