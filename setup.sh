@@ -8,10 +8,6 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}--- Performing Setup ---${NC}"
 
-# ==========================================
-# 1. PYTHON / BACKEND SETUP
-# ==========================================
-
 # Check/Install python3-venv
 if ! python3 -m venv --help > /dev/null 2>&1; then
     echo "The 'python3-venv' package is missing. Installing it now..."
@@ -32,19 +28,24 @@ fi
 source coraldev/bin/activate
 echo "Virtual environment activated."
 
-# ==========================================
-# 2. SUBMODULES & HARDWARE LIBS
-# ==========================================
 echo -e "${GREEN}--- Checking Submodules ---${NC}"
 git submodule update --init --recursive
 
-echo -e "${GREEN}--- Setting up Coralmicro ---${NC}"
-# Use parentheses to run in a subshell so we don't mess up directories
+echo -e "${GREEN}--- Fetching Toolchain for Build and Flash of Starbelt PCB Software---${NC}"
 (
-    cd coralmicro || { echo -e "${RED}Failed to find coralmicro dir${NC}"; exit 1; }
-    
-    # Fix broken coralmicro requirements
-    cat > scripts/requirements.txt <<EOF
+cd make ||{ echo -e "${RED}Failed to find make tools dir${NC}"; exit 1; }
+wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+cd ..
+) || {echo -e "complier toolchain not fetched/unzipped";}
+
+echo -e "${GREEN}--- Setting up Coralmicro Submodules and Building Dependencies ---${NC}"
+
+cd third-party/coralmicro || { echo -e "${RED}Failed to find coralmicro dir${NC}"; exit 1; }
+
+# Fix broken coralmicro requirements
+cat > scripts/requirements.txt <<EOF
 hexformat==0.2
 hidapi
 progress==1.5
@@ -53,7 +54,6 @@ pyusb==1.2.0
 EOF
 
     # Setup and build coralmicro
-    # Note: setup.sh might ask for sudo password
-    bash setup.sh
+    # will ask for sudo password
+    bash setup.bsh
     bash build.sh
-)
