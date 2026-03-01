@@ -31,7 +31,7 @@ int main(void) {
  // turn on radio front end by default
   init_com(&rx_cmd_buff, &tx_cmd_buff); // Enable COM PCB Power off the rip
   for(int i = 0; i<2000000;i++); // some time to boot
-  init_rf(&rx_cmd_buff, &tx_cmd_buff); // Start in RX mode
+  com_enable_rx(&rx_cmd_buff, &tx_cmd_buff); // Start in RX mode
 
   // next up: create COM logic to poke the CDH board to confirm that its awake so that the CDH board can then turn on the rf frontend to RX mode. 
 

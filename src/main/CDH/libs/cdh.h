@@ -73,7 +73,7 @@ void init_gpio(void);
 // ========== CDH Functions ========== //
 
 void init_com(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
-void init_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_enable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 // void init_pay(void);
 
 

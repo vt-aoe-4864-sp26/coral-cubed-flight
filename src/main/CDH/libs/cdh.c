@@ -8,27 +8,19 @@
 
 // Standard library headers
 #include <stdint.h>                 // uint8_t
-
-// libopencm3 library
 #include <libopencm3/stm32/flash.h> // used in init_clock
 #include <libopencm3/stm32/gpio.h>  // used in init_gpio
 #include <libopencm3/stm32/rcc.h>   // used in init_clock, init_rtc
 #include <libopencm3/stm32/usart.h> // used in init_uart
-
-// Board-specific header
 #include <cdh.h>                    // CDH header
-
-// TAB header
 #include <tab.h>                    // TAB header
 
-// Functions required by TAB
+// ========== Tab Handling ========== //
 
 // This function utilizes the OpenLST HANDLE_COMMON_DATA Opcode
 // It expects to recieve a payload of the form [var_code var_len val_ptr]
 // These can be utilized to save things from the UART buffer and execute different onboard
 // behevaiors. Define new VAR_CODEs in cdh.h
-
-// cdh.c
 int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
   // need at least type and length bytes
   if(common_data_buff_i.end_index < 2) {
@@ -53,11 +45,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
         
         case VAR_ENABLE: // told to power on com
-          gpio_set(GPIOC, COM_EN_PIN);
+          power_on_com();
           break;
 
         case VAR_DISABLE: // told to power off com
-          gpio_clear(GPIOC, COM_EN_PIN);
+          power_off_com();
           break;
 
         default:
@@ -70,11 +62,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
         
         case VAR_ENABLE: // told to power on pay
-          gpio_set(GPIOC, PAY_EN_PIN);
+          power_on_pay();
           break;
 
         case VAR_DISABLE: // told to power off pay
-          gpio_clear(GPIOC, PAY_EN_PIN);
+          power_off_pay();
           break;
 
         default:
@@ -134,8 +126,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 }
 
 
-
-// Board initialization functions
+// ========== Board initialization functions ========== //
 
 void init_clock(void) {
   rcc_osc_on(RCC_HSI16);                    // 16 MHz internal RC oscillator
@@ -209,7 +200,7 @@ void init_gpio(void){
   gpio_clear(GPIOC, COM_EN_PIN);
 }
 
-// Feature functions
+// ========== UART Communication functions ========== //
 
 void rx_usart1(rx_cmd_buff_t* rx_cmd_buff_o) {
   while(                                             // while
@@ -244,15 +235,54 @@ void tx_usart1(tx_cmd_buff_t* tx_cmd_buff_o) {
   }                                                  //
 }
 
-void init_com(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+// ========== GPIO functions ========== //
+void power_on_com(){
+  gpio_set(GPIOC, COM_EN_PIN); // power on COM
+}
+
+void power_off_com(){
+  gpio_clear(GPIOC, COM_EN_PIN); // power off COM
+}
+
+void power_on_pay(){
+  gpio_set(GPIOC, PAY_EN_PIN); // power on PAY
+}
+
+void power_off_pay(){
+  gpio_clear(GPIOC, PAY_EN_PIN); // power off PAY
+}
+
+// ========== UART Commands to COM ========== //
+void com_enable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_ENABLE};
-  // since rx_cmd_buff and tx_cmd_buff are already pointers, no & needed here
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
-void init_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
-  uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_ENABLE};
+void com_disable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_DISABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
+
+void com_enable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_RX, 0x01, VAR_ENABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+void com_disable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_RX, 0x01, VAR_DISABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+void com_enable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_ENABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_DISABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
 
 // Bootloader opcode functions: I don't see us using these but left in for clarity - Jack
 
