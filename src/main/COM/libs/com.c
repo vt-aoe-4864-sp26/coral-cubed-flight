@@ -8,34 +8,237 @@
 
 // Standard library headers
 #include <stdint.h>                 // uint8_t
-
-// libopencm3 library
-#include <libopencm3/nrf/clock.h> // used in init_clock
-#include <libopencm3/nrf/gpio.h>  // used in init_gpio
-#include <libopencm3/nrf/uart.h>  // used in init_uart
-#include <libopencm3/nrf/52/radio.h>
-
-// Board-specific header
+#include <libopencm3/nrf/clock.h> 
+#include <libopencm3/nrf/gpio.h>
+#include <libopencm3/nrf/uart.h>
+#include <libopencm3/nrf/52/radio.h>  
 #include <com.h>                    // COM header
-
-// TAB header
 #include <tab.h>                    // TAB header
 
-// Macros
+// ========== Macros ========== //
 
-//// GPIO Port 0
-#define P0 (GPIO_BASE)
-
-//// Flash memory
-#define NVMC_CONFIG MMIO32(NVMC_BASE + 0x504)
-#define NVMC_CONFIG_REN (0     )
-#define NVMC_CONFIG_WEN (1 << 1)
-#define NVMC_CONFIG_EEN (1 << 2)
-#define NVMC_ERASEPAGE MMIO32(NVMC_BASE + 0x508)
-#define NVMC_READY MMIO32(NVMC_BASE + 0x400)
-#define NVMC_READY_BUSY (0     )
+// Flash memory
+#define NVMC_CONFIG MMIO32    (NVMC_BASE + 0x504)
+#define NVMC_CONFIG_REN       (0     )
+#define NVMC_CONFIG_WEN       (1 << 1)
+#define NVMC_CONFIG_EEN       (1 << 2)
+#define NVMC_ERASEPAGE MMIO32 (NVMC_BASE + 0x508)
+#define NVMC_READY MMIO32     (NVMC_BASE + 0x400)
+#define NVMC_READY_BUSY       (0     )
 
 
+// ========== TAB Handling ========== //
+
+int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
+  // need at least type and length bytes
+  if(common_data_buff_i.end_index < 2) {
+    return 0; 
+  }
+
+  uint8_t var_code = common_data_buff_i.data[0];
+  uint8_t var_len  = common_data_buff_i.data[1];
+
+  // make sure we actually received all the bytes the length byte claims
+  if(common_data_buff_i.end_index < (size_t)(2 + var_len)) {
+    return 0; 
+  }
+
+  // pointer to the start of the value payload
+  uint8_t* val_ptr = &common_data_buff_i.data[2];
+
+  switch(var_code) {
+
+    case VAR_CODE_COM_EN:
+      // COM should never hear this case - we probably don't want to give CDH the ability to turn off COM
+      // with no plan to turn it back on? TODO: Add power off reset to CDH for COM, which com could pass through.
+      switch(*val_ptr){ 
+        
+        case VAR_ENABLE: // told to power on com
+
+          break;
+
+        case VAR_DISABLE: // told to power off com
+
+          break;
+
+        default:
+          return 0;
+      }
+      break;
+
+    case VAR_CODE_PAY_EN:
+      // 
+      switch(*val_ptr){ 
+        case VAR_ENABLE: // told to power on pay
+
+          break;
+
+        case VAR_DISABLE: // told to power off pay
+
+          break;
+
+        default:
+          return 0;              
+      } 
+      break;
+
+    case VAR_CODE_RF_EN:
+      // 
+      switch(*val_ptr){ 
+          
+        case VAR_ENABLE: {
+
+          break;
+        }
+
+        case VAR_DISABLE: {
+
+          break;
+        }
+      }
+      break;
+
+    case VAR_CODE_RF_TX: {
+
+      break;
+    }
+
+    case VAR_CODE_RF_RX:
+      break;
+
+    case VAR_CODE_CORAL_WAKE:
+      break;
+
+    case VAR_CODE_CORAL_CAM_ON:
+      break;
+
+    case VAR_CODE_CORAL_INFER:
+      break;
+
+    default:
+      // make the LEDs go crazy if the payload is meaningless
+      while(1) {
+        for(int i=0; i<4000000; i++) {
+          __asm__("nop");
+        }
+        gpio_toggle(P0, LED1);
+        gpio_toggle(P0, LED2);
+      }
+    }
+      return 0;
+}
+
+// ========== Board initialization functions ========== //
+
+void init_clock(void) {
+  clock_start_hfclk(0);
+}
+
+void init_leds(void) {
+  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO29);
+  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO30);
+  gpio_set(  P0, GPIO30); // LED1 is P0.30
+  gpio_clear(P0, GPIO29); // LED2 is P0.29
+}
+
+void init_uart(void) {
+  uart_disable(UART0);
+  gpio_mode_setup(P0, GPIO_MODE_INPUT,  GPIO_PUPD_NONE,   GPIO5);
+  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO4);
+  uart_configure( // TX1 is P0.04 and RX1 is P0.05
+   UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
+   UART_BAUD_9600, 0
+  );
+  uart_enable(UART0);
+}
+
+void init_gpio(void){
+  gpio_mode_setup(P1, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RF_FRONTEND_PIN);
+  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
+  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
+}
+
+// ========== UART Communication functions ========== //
+
+void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o) {
+  uart_start_rx(UART0);                              // Generate STARTRX task
+  while(                                             // while
+   rx_cmd_buff_o->state!=RX_CMD_BUFF_STATE_COMPLETE  //  Command not complete
+  ) {                                                //
+    while(!UART_EVENT_RXDRDY(UART0)) {}              // Wait until RXD is ready
+    UART_EVENT_RXDRDY(UART0) = 0;                    // Clear RXDRDY event
+    uint8_t b = uart_recv(UART0);                    // Receive byte from RX pin
+    push_rx_cmd_buff(rx_cmd_buff_o, b);              // Push byte to buffer
+  }                                                  //
+  uart_stop_rx(UART0);                               // Generate STOPRX task
+}
+
+void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
+  if(                                                  // if
+   rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE && // rx_cmd is valid AND
+   tx_cmd_buff_o->empty                                // tx_cmd is empty
+  ) {                                                  //
+    write_reply(rx_cmd_buff_o, tx_cmd_buff_o);         // execute cmd and reply
+  }                                                    //
+}
+
+void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
+  uart_start_tx(UART0);                              // Generate STARTTX task
+  while(                                             // while
+   !(tx_cmd_buff_o->empty)                           //  TX buffer not empty
+  ) {                                                //
+    uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);      // Pop byte from TX buffer
+    uart_send(UART0,b);                              // Send byte to TX pin
+    while(!UART_EVENT_TXDRDY(UART0)) {}              // Wait until TXD is ready
+    UART_EVENT_TXDRDY(UART0) = 0;                    // Clear TXDRDY event
+    if(tx_cmd_buff_o->empty) {                       // if TX buffer empty
+      gpio_toggle(P0, GPIO30);                       //  Toggle LED1
+      gpio_toggle(P0, GPIO29);                       //  Toggle LED2
+    }                                                //
+  }                                                  //
+  uart_stop_tx(UART0);                               // Generate STOPTX task
+}
+
+// ========== GPIO Functions ========== //
+
+void enable_rf(){
+  gpio_set(P1, RF_FRONTEND_PIN);
+}
+
+void disable_rf(){
+  gpio_clear(P1, RF_FRONTEND_PIN);
+}
+
+void enable_rx(){
+  gpio_clear(P0, TX_EN_PIN);
+      for(int i=0; i<2000000; i++) {
+      __asm__("nop"); // Settle time to ensure RX_ENABLE is LOW
+    }
+  gpio_set(P0, RX_EN_PIN);
+}
+
+void enable_tx(){
+  gpio_clear(P0, RX_EN_PIN);
+      for(int i=0; i<2000000; i++) {
+      __asm__("nop"); // Settle time to ensure TX_ENABLE is LOW
+    }
+  gpio_set(P0, TX_EN_PIN);
+}
+
+// ========== UART Messages to CDH ========== //
+
+void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_ENABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+
+
+// ========== Radio Functions ========== //
 uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 
 void init_radio_tx_test(void) {
@@ -66,7 +269,7 @@ void blast_noise(void) {
   RADIO_EVENT_DISABLED = 0;
 }
 
-// Utility functions
+// ========== Utility functions ========== //
 
 void flash_erase_page(uint32_t page) {
   // Enable erase
@@ -83,95 +286,8 @@ void flash_erase_page(uint32_t page) {
   __asm__("dsb 0xF");
 }
 
-// Functions required by TAB
 
-int handle_common_data(common_data_t common_data_buff_i) {
-  // fail if payload is empty
-  if(common_data_buff_i.end_index == 0) {
-  // fail if payload is empty
-  }
-
-  // now handle the actual command action
-  uint8_t action = common_data_buff_i.data[0];
-
-  if(action == 0x01) {
-    // enable tx, disable rx
-    gpio_clear(P0, RX_EN_PIN);
-    gpio_set(P0, TX_EN_PIN);
-    return 1;
-  } else if(action == 0x02) {
-    // enable rx, disable tx
-    gpio_clear(P0, TX_EN_PIN);
-    gpio_set(P0, RX_EN_PIN);
-    return 1;
-  } else if(action == 0x03) {
-    // enable tx pin for nrf21540
-    gpio_clear(P0, RX_EN_PIN);
-    gpio_set(P0, TX_EN_PIN);
-    
-    // wait a tiny bit for the pa to power up
-    for(volatile int i=0; i<100; i++); 
-
-    // send the dummy packet
-    blast_noise();
-    return 1;
-  }
-  // unknown command
-  return 0; 
-}
-
-
-// This example implementation of handle_bootloader_erase erases the portion of
-// Flash accessible to bootloader_write_page
-int handle_bootloader_erase(void){
-  for(size_t subpage_id=0; subpage_id<255; subpage_id++) {
-    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
-    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
-    // Need to erase page once before writing inside of it
-    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
-      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
-    }
-  }
-  return 1;
-}
-
-// This example implementation of handle_bootloader_write_page writes 128 bytes 
-// of data to a region of memory indexed by the "page number" parameter (the
-// "sub-page ID").
-int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff){
-  if(
-   rx_cmd_buff->state==RX_CMD_BUFF_STATE_COMPLETE &&
-   rx_cmd_buff->data[OPCODE_INDEX]==BOOTLOADER_WRITE_PAGE_OPCODE
-  ) {
-    uint32_t subpage_id = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX]);
-    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
-    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
-    // Need to erase page once before writing inside of it
-    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
-      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
-    }
-    // write data
-    uint32_t start_addr = APP_ADDR+subpage_id*BYTES_PER_BLR_PLD;
-    for(size_t i=0; i<BYTES_PER_BLR_PLD; i+=4) {
-      uint32_t word = *(uint32_t*)((rx_cmd_buff->data)+PLD_START_INDEX+1+i);
-      // Enable write
-      NVMC_CONFIG = NVMC_CONFIG_WEN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-      // Write word
-      MMIO32(i+start_addr) = word;
-      // Wait for write to complete
-      while(NVMC_READY==NVMC_READY_BUSY) {}
-      // Enable read-only mode
-      NVMC_CONFIG = NVMC_CONFIG_REN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-    }
-    return 1;
-  } else {
-    return 0;
-  }
-}
+// ========== Example Bootloader Functions ========== //
 
 // This example implementation of bootloader_write_page_addr32 writes 128 bytes
 // of data to a region of memory beginning at the start address
@@ -226,67 +342,54 @@ int bootloader_active(void) {
   return 1;
 }
 
-// Board initialization functions
-
-void init_clock(void) {
-  clock_start_hfclk(0);
+// This example implementation of handle_bootloader_erase erases the portion of
+// Flash accessible to bootloader_write_page
+int handle_bootloader_erase(void){
+  for(size_t subpage_id=0; subpage_id<255; subpage_id++) {
+    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
+    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
+    // Need to erase page once before writing inside of it
+    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
+      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
+    }
+  }
+  return 1;
 }
 
-void init_leds(void) {
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO29);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO30);
-  gpio_set(  P0, GPIO30); // LED1 is P0.30
-  gpio_clear(P0, GPIO29); // LED2 is P0.29
-}
-
-void init_uart(void) {
-  uart_disable(UART0);
-  gpio_mode_setup(P0, GPIO_MODE_INPUT,  GPIO_PUPD_NONE,   GPIO5);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO4);
-  uart_configure( // TX1 is P0.04 and RX1 is P0.05
-   UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
-   UART_BAUD_9600, 0
-  );
-  uart_enable(UART0);
-}
-
-// Feature functions
-
-void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o) {
-  uart_start_rx(UART0);                              // Generate STARTRX task
-  while(                                             // while
-   rx_cmd_buff_o->state!=RX_CMD_BUFF_STATE_COMPLETE  //  Command not complete
-  ) {                                                //
-    while(!UART_EVENT_RXDRDY(UART0)) {}              // Wait until RXD is ready
-    UART_EVENT_RXDRDY(UART0) = 0;                    // Clear RXDRDY event
-    uint8_t b = uart_recv(UART0);                    // Receive byte from RX pin
-    push_rx_cmd_buff(rx_cmd_buff_o, b);              // Push byte to buffer
-  }                                                  //
-  uart_stop_rx(UART0);                               // Generate STOPRX task
-}
-
-void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
-  if(                                                  // if
-   rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE && // rx_cmd is valid AND
-   tx_cmd_buff_o->empty                                // tx_cmd is empty
-  ) {                                                  //
-    write_reply(rx_cmd_buff_o, tx_cmd_buff_o);         // execute cmd and reply
-  }                                                    //
-}
-
-void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
-  uart_start_tx(UART0);                              // Generate STARTTX task
-  while(                                             // while
-   !(tx_cmd_buff_o->empty)                           //  TX buffer not empty
-  ) {                                                //
-    uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);      // Pop byte from TX buffer
-    uart_send(UART0,b);                              // Send byte to TX pin
-    while(!UART_EVENT_TXDRDY(UART0)) {}              // Wait until TXD is ready
-    UART_EVENT_TXDRDY(UART0) = 0;                    // Clear TXDRDY event
-    if(tx_cmd_buff_o->empty) {                       // if TX buffer empty
-      gpio_toggle(P0, GPIO30);                       //  Toggle LED1
-      gpio_toggle(P0, GPIO29);                       //  Toggle LED2
-    }                                                //
-  }                                                  //
-  uart_stop_tx(UART0);                               // Generate STOPTX task
+// This example implementation of handle_bootloader_write_page writes 128 bytes 
+// of data to a region of memory indexed by the "page number" parameter (the
+// "sub-page ID").
+int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff){
+  if(
+   rx_cmd_buff->state==RX_CMD_BUFF_STATE_COMPLETE &&
+   rx_cmd_buff->data[OPCODE_INDEX]==BOOTLOADER_WRITE_PAGE_OPCODE
+  ) {
+    uint32_t subpage_id = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX]);
+    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
+    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
+    // Need to erase page once before writing inside of it
+    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
+      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
+    }
+    // write data
+    uint32_t start_addr = APP_ADDR+subpage_id*BYTES_PER_BLR_PLD;
+    for(size_t i=0; i<BYTES_PER_BLR_PLD; i+=4) {
+      uint32_t word = *(uint32_t*)((rx_cmd_buff->data)+PLD_START_INDEX+1+i);
+      // Enable write
+      NVMC_CONFIG = NVMC_CONFIG_WEN;
+      __asm__("isb 0xF");
+      __asm__("dsb 0xF");
+      // Write word
+      MMIO32(i+start_addr) = word;
+      // Wait for write to complete
+      while(NVMC_READY==NVMC_READY_BUSY) {}
+      // Enable read-only mode
+      NVMC_CONFIG = NVMC_CONFIG_REN;
+      __asm__("isb 0xF");
+      __asm__("dsb 0xF");
+    }
+    return 1;
+  } else {
+    return 0;
+  }
 }

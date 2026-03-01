@@ -12,8 +12,7 @@
 // extern void init_radio_tx_test(void);
 
 // pin definitions
-#define P0              (GPIO_BASE)
-#define P1              (GPIO_BASE + 0x300)
+
 
 int main(void) {
   // setup mcu
@@ -28,11 +27,6 @@ int main(void) {
   gpio_mode_setup(P1, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RF_FRONTEND_PIN);
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
-  
-  // default: frontend on, rx enabled, tx disabled
-  // gpio_set(P1, RF_FRONTEND_PIN);
-  // gpio_clear(P0, TX_EN_PIN);
-  // gpio_set(P0, RX_EN_PIN);
 
   // lock the frontend into transmit mode
   gpio_set(P1, RF_FRONTEND_PIN);
