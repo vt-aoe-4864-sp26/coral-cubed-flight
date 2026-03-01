@@ -67,11 +67,18 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 void init_clock(void);
 void init_leds(void);
 void init_uart(void);
+void init_gpio(void);
 
 // ========== COM Functions ========== //
 
 void init_radio_tx_test(void);
 void blast_noise(void);
+void enable_rf(void);
+void disable_rf(void);
+void enable_rx(void);
+void enable_tx(void);
+void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 // ========== General UART ========== //
 

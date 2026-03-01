@@ -70,11 +70,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       // 
       switch(*val_ptr){ 
         case VAR_ENABLE: // told to power on pay
-
+          cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
           break;
 
         case VAR_DISABLE: // told to power off pay
-
+          cdh_disable_pay(rx_cmd_buff, tx_cmd_buff);
           break;
 
         default:
@@ -86,24 +86,22 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       // 
       switch(*val_ptr){ 
           
-        case VAR_ENABLE: {
-
+        case VAR_ENABLE:
+          enable_rf();
           break;
-        }
 
-        case VAR_DISABLE: {
-
+        case VAR_DISABLE:
+          disable_rf();
           break;
-        }
       }
       break;
 
-    case VAR_CODE_RF_TX: {
-
+    case VAR_CODE_RF_TX: 
+      enable_tx();
       break;
-    }
 
     case VAR_CODE_RF_RX:
+      enable_rx();
       break;
 
     case VAR_CODE_CORAL_WAKE:
@@ -235,7 +233,6 @@ void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
-
 
 
 // ========== Radio Functions ========== //
