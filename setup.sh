@@ -44,6 +44,13 @@ else
 fi
 ) 
 
+echo -e "${GREEN}--- Setting up LibOpenCM3 Submodules and Building Dependencies ---${NC}"
+(
+export PATH=$PATH:$(pwd)/make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin || { echo -e "${RED}Failed to find toolchain.${NC}"; exit 1; }
+cd third-party/libopencm3
+make || { echo -e "${RED}Errors building LibOpenCM3${NC}"; exit 1; }
+)
+
 echo -e "${GREEN}--- Setting up Coralmicro Submodules and Building Dependencies ---${NC}"
 
 cd third-party/coralmicro || { echo -e "${RED}Failed to find coralmicro dir${NC}"; exit 1; }
@@ -61,3 +68,9 @@ EOF
     # will ask for sudo password
     bash setup.sh
     bash build.sh
+
+cd ../..
+echo -e "${GREEN}--- Installing Flashtools ---${NC}"
+sudo apt install stlink-tools
+
+echo -e "${BLUE}--- Setup Complete, Welcome to Coral Cubed---${NC}"
