@@ -28,10 +28,12 @@ int main(void) {
   tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
   clear_tx_cmd_buff(&tx_cmd_buff);
 
-  //// make these real
-  init_com(rx_cmd_buff, tx_cmd_buff); // Enable COM PCB Power off the rip
-  // init_rf(); // Start in RX mode
+ // turn on radio front end by default
+  init_com(&rx_cmd_buff, &tx_cmd_buff); // Enable COM PCB Power off the rip
+  for(int i = 0; i<2000000;i++); // some time to boot
+  init_rf(&rx_cmd_buff, &tx_cmd_buff); // Start in RX mode
 
+  // next up: create COM logic to poke the CDH board to confirm that its awake so that the CDH board can then turn on the rf frontend to RX mode. 
 
   // UART Control Loop //
   while(1) {

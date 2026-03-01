@@ -66,7 +66,9 @@ EOF
 
     # Setup and build coralmicro
     # will ask for sudo password
+    dos2unix setup.sh
     bash setup.sh
+    dos2unix build.sh
     bash build.sh
 
 cd ../..
