@@ -6,7 +6,7 @@ CFILES = blink.c
 CFILES += # SUPPORT_DIR C files
 
 # Edit these two lines as needed
-DEVICE=stm32l496rgt3
+DEVICE = stm32l496rgt3
 OOCD_FILE = board/stm32l4-generic.cfg
 
 # All lines below probably should not be edited

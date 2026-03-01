@@ -23,14 +23,13 @@
 
 // Functions required by TAB
 
-// The GOAT HANDLE_COMMON_DATA // 
-
 // This function utilizes the OpenLST HANDLE_COMMON_DATA Opcode
 // It expects to recieve a payload of the form [var_code var_len val_ptr]
 // These can be utilized to save things from the UART buffer and execute different onboard
 // behevaiors. Define new VAR_CODEs in cdh.h
 
-int handle_common_data(common_data_t common_data_buff_i) {
+// cdh.c
+int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
   // need at least type and length bytes
   if(common_data_buff_i.end_index < 2) {
     return 0; 
@@ -44,63 +43,96 @@ int handle_common_data(common_data_t common_data_buff_i) {
     return 0; 
   }
 
-  // pointer to the start of the value payload to make reading easier
+  // pointer to the start of the value payload
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
   switch(var_code) {
 
     case VAR_CODE_COM_EN:
-      // val_ptr=1 Drives IC high on EPS to enable power to COM PCB
+      // val_ptr=1 drives ic high on eps to enable power to com pcb
+      switch(*val_ptr){ 
+        
+        case VAR_ENABLE: // told to power on com
+          gpio_set(GPIOC, COM_EN_PIN);
+          break;
+
+        case VAR_DISABLE: // told to power off com
+          gpio_clear(GPIOC, COM_EN_PIN);
+          break;
+
+        default:
+          return 0;
+      }
       break;
 
     case VAR_CODE_PAY_EN:
-      // val_ptr=1 Drives IC high on EPS to enable power to PAY PCB
-      // val_ptr could hold the model id or settings
-      if (&val_ptr == 1){
+      // val_ptr=1 drives ic high on eps to enable power to pay pcb
+      switch(*val_ptr){ 
         
+        case VAR_ENABLE: // told to power on pay
+          gpio_set(GPIOC, PAY_EN_PIN);
+          break;
 
-      };
+        case VAR_DISABLE: // told to power off pay
+          gpio_clear(GPIOC, PAY_EN_PIN);
+          break;
+
+        default:
+          return 0;              
+      } 
       break;
 
     case VAR_CODE_RF_EN:
-      // val_ptr=1 to passthrough CDH to COM to enable RF Frontend
-      // val_ptr could hold the model id or settings
+      // val_ptr=1 to passthrough cdh to com to enable rf frontend
+      switch(*val_ptr){ 
+          
+        case VAR_ENABLE: {
+          uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_ENABLE};
+          // since rx_cmd_buff and tx_cmd_buff are already pointers, no & needed here
+          msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+          break;
+        }
+
+        case VAR_DISABLE: {
+          uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_DISABLE};
+          msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+          break;
+        }
+      }
       break;
 
-    case VAR_CODE_RF_TX:
-      // val_ptr=1 to passthrough CDH to COM to enable RF Transmission
-      // tell coral to run the inference
-      // val_ptr could hold the model id or settings
+    case VAR_CODE_RF_TX: {
+      // val_ptr=1 to passthrough cdh to com to enable rf frontend
+      uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_ENABLE};
+      msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
       break;
+    }
 
     case VAR_CODE_RF_RX:
-
       break;
 
     case VAR_CODE_CORAL_WAKE:
-
       break;
 
     case VAR_CODE_CORAL_CAM_ON:
-
       break;
 
     case VAR_CODE_CORAL_INFER:
-
       break;
 
-    // case VAR_CODE_:
-    //   // tell coral to run the inference
-    //   // val_ptr could hold the model id or settings
-    //   break;
-
     default:
-      // unknown command code
+      // make the LEDs go crazy if the payload is meaningless
+      while(1) {
+        for(int i=0; i<4000000; i++) {
+          __asm__("nop");
+        }
+        gpio_toggle(GPIOB, GPIO2);
+        gpio_toggle(GPIOB, GPIO1);
+      }
+    }
       return 0;
-  }
-
-  return 1; 
 }
+
 
 
 // Board initialization functions
@@ -143,12 +175,17 @@ void init_leds(void) {
 }
 
 void init_uart(void) {
+  // Enable peripheral clocks
   rcc_periph_reset_pulse(RST_USART1);
   rcc_periph_clock_enable(RCC_GPIOA);
   rcc_periph_clock_enable(RCC_USART1);
+
+  // Setup UART modes
   gpio_mode_setup(GPIOA,GPIO_MODE_AF,GPIO_PUPD_NONE,GPIO9|GPIO10);
   gpio_set_af(GPIOA,GPIO_AF7,GPIO9);  // USART1_TX is alternate function 7
   gpio_set_af(GPIOA,GPIO_AF7,GPIO10); // USART1_RX is alternate function 7
+
+  // === DEFAULT BAUD TO 115200 === //
   usart_set_baudrate(USART1,115200);
   usart_set_databits(USART1,8);
   usart_set_stopbits(USART1,USART_STOPBITS_1);
@@ -156,12 +193,11 @@ void init_uart(void) {
   usart_set_parity(USART1,USART_PARITY_NONE);
   usart_set_flow_control(USART1,USART_FLOWCONTROL_NONE);
   usart_enable(USART1);
+
 }
 
 void init_gpio(void){
-
-  // Open Ports B & C // 
-  rcc_periph_clock_enable(RCC_GPIOB);
+  // Open Port C // 
   rcc_periph_clock_enable(RCC_GPIOC);
 
     // GPIO Initialization //

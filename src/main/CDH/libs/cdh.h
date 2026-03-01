@@ -22,7 +22,6 @@
 #define PAY_EN_PIN          GPIO7   // PC
 #define EXT_GONE            GPIO15  // PA
 
-
 // ========== Byte counts
 #define BYTES_PER_BLR_PLD    ((uint32_t)128)
 #define BYTES_PER_FLASH_PAGE ((uint32_t)2048)
@@ -44,16 +43,20 @@
 // ========== COM Commands
 #define VAR_CODE_RF_EN          ((uint8_t)0x03)
 #define VAR_CODE_RF_TX          ((uint8_t)0x04)
-#define VAR_CODE_RF_RX          ((uint8_t)0x01)
+#define VAR_CODE_RF_RX          ((uint8_t)0x05)
 
-//========== Payload Commands
-#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x05)
-#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x06)
-#define VAR_CODE_CORAL_INFER    ((uint8_t)0x07)
+// ========== Payload Commands
+#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x06)
+#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x07)
+#define VAR_CODE_CORAL_INFER    ((uint8_t)0x08)
+
+// ========== Common_Data_Vars
+#define VAR_ENABLE              ((uint8_t)0x01)
+#define VAR_DISABLE             ((uint8_t)0x02)
 
 // ========== Functions Required by TAB/OpenLST Protocols ========== // 
 
-int handle_common_data(common_data_t common_data_buff_i);
+int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 int handle_bootloader_erase(void);
 int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff);
 int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff);
@@ -65,12 +68,13 @@ int bootloader_active(void);
 void init_clock(void);
 void init_leds(void);
 void init_uart(void);
+void init_gpio(void);
 
 // ========== CDH Functions ========== //
 
-void init_com(void);
-void init_rf(void);
-void init_pay(void);
+// void init_com(void);
+// void init_rf(void);
+// void init_pay(void);
 
 
 void rx_usart1(rx_cmd_buff_t* rx_cmd_buff_o);
