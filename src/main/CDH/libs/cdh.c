@@ -244,7 +244,11 @@ void tx_usart1(tx_cmd_buff_t* tx_cmd_buff_o) {
   }                                                  //
 }
 
-
+void init_com(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_ENABLE};
+  // since rx_cmd_buff and tx_cmd_buff are already pointers, no & needed here
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
 // Bootloader opcode functions: I don't see us using these but left in for clarity - Jack
 
 // This example implementation of handle_bootloader_erase erases the portion of

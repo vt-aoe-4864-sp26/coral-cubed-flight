@@ -106,21 +106,21 @@ build-main: build-libopencm3
 	@echo "✓ Main projects built successfully"
 
 # Build specific example: make build-example PROJECT=blink PLATFORM=CDH
-build-example: build-libopencm3
-	@if [ -z "$(PROJECT)" ] || [ -z "$(PLATFORM)" ]; then \
-		echo "Usage: make build-example PROJECT=<name> PLATFORM=<CDH|COM>"; \
-		echo "Available examples:"; \
-		find $(SRC_DIR)/examples -mindepth 2 -maxdepth 2 -type d ! -name ".*" -exec basename {} \; | sort | uniq; \
-		exit 1; \
-	fi
-	@PROJECT_DIR="$(SRC_DIR)/examples/$(PLATFORM)/$(PROJECT)"; \
-	if [ ! -d "$$PROJECT_DIR" ]; then \
-		echo "ERROR: Project not found at $$PROJECT_DIR"; \
-		exit 1; \
-	fi
-	@echo "Building example $(PROJECT) for $(PLATFORM)..."; \
-	$(MAKE) -C "$$PROJECT_DIR" $(VERBOSE)
-	@echo "✓ Example $(PROJECT) built successfully"
+# build-example: build-libopencm3
+# 	@if [ -z "$(PROJECT)" ] || [ -z "$(PLATFORM)" ]; then \
+# 		echo "Usage: make build-example PROJECT=<name> PLATFORM=<CDH|COM>"; \
+# 		echo "Available examples:"; \
+# 		find $(SRC_DIR)/examples -mindepth 2 -maxdepth 2 -type d ! -name ".*" -exec basename {} \; | sort | uniq; \
+# 		exit 1; \
+# 	fi
+# 	@PROJECT_DIR="$(SRC_DIR)/examples/$(PLATFORM)/$(PROJECT)"; \
+# 	if [ ! -d "$$PROJECT_DIR" ]; then \
+# 		echo "ERROR: Project not found at $$PROJECT_DIR"; \
+# 		exit 1; \
+# 	fi
+# 	@echo "Building example $(PROJECT) for $(PLATFORM)..."; \
+# 	$(MAKE) -C "$$PROJECT_DIR" $(VERBOSE)
+# 	@echo "✓ Example $(PROJECT) built successfully"
 
 # Build specific main project: make build-project TARGET=CDH|COM
 build-project: build-libopencm3

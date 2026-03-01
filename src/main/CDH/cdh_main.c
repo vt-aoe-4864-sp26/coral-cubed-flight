@@ -22,13 +22,16 @@ int main(void) {
   init_uart(); // shared UART to COM (SP26 CDH 0.1.0)
   init_gpio();
 
-  // init_com(); // Enable COM PCB Power off the rip
-  // init_rf(); // Start in RX mode
-
+  // init UART for control of COM/PAY
   rx_cmd_buff_t rx_cmd_buff = {.size=CMD_MAX_LEN, .route_id=CDH};
   clear_rx_cmd_buff(&rx_cmd_buff);
   tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
   clear_tx_cmd_buff(&tx_cmd_buff);
+
+  //// make these real
+  init_com(rx_cmd_buff, tx_cmd_buff); // Enable COM PCB Power off the rip
+  // init_rf(); // Start in RX mode
+
 
   // UART Control Loop //
   while(1) {
