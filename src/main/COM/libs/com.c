@@ -50,6 +50,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
     case VAR_CODE_ALIVE:
     switch(*val_ptr){ 
         case 0x01:
+          send_alive(rx_cmd_buff, tx_cmd_buff);
           return 1;
 
         default:
@@ -210,6 +211,13 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
 
 void enable_rf(){
   gpio_set(P1, RF_FRONTEND_PIN);
+  while(1) {
+        for(int i=0; i<4000000; i++) {
+          __asm__("nop");
+        }
+        gpio_toggle(P0, LED1);
+        gpio_toggle(P0, LED2);
+      }
 }
 
 void disable_rf(){
@@ -234,13 +242,17 @@ void enable_tx(){
 
 // ========== UART Messages to CDH ========== //
 
+void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_ACK_OPCODE, NULL, 3);
+}
+
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_ENABLE};
   msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
-  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 0);
 }
 
 

@@ -72,6 +72,7 @@ void init_gpio(void);
 
 // ========== COM Functions ========== //
 
+void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void init_radio_tx_test(void);
 void blast_noise(void);
 void enable_rf(void);

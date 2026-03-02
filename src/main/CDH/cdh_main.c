@@ -32,7 +32,7 @@ int main(void) {
   power_on_com(); // enable com pcb power off the rip
   
   // wait for com to wake up and respond
-
+  check_com_online(&rx_cmd_buff, &tx_cmd_buff);
 
   // clean up before entering main loop
   clear_rx_cmd_buff(&rx_cmd_buff);
