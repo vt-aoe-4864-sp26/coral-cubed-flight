@@ -31,7 +31,7 @@ void gpio_mode_setup(uint32_t gpioport, uint32_t mode, uint32_t pull_up_down,uin
 
 As you can see, your port is literally dropped into the void.
 
-As a result, to the best of this programmer's understanding, when you input `gpio_mod_setup(P1,GPIO9)` to setup your RF frontend, you are essentially just inputting `GPIO9`.
+As a result, to the best of this programmer's understanding, when you input `gpio_mode_setup(P1,GPIO9)` to setup your RF frontend, you are essentially just inputting `GPIO9`.
 
 Similarly for `gpio_set`:
 ```
@@ -69,5 +69,4 @@ void disable_rf(void) {
     P1_OUTCLR = (1 << 9);
 }
 ```
-
-### I suspect this could be done even more easily by just adding 300 to GPIO9
+Please slack me if you find a more refined solution or have questions about the included code or how I solved this. I haven't posted an issue to their github about this yet, but I might try to contibute a fix for this when I have bandwidth later in the semester.
