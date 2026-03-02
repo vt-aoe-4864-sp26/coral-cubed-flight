@@ -161,11 +161,14 @@ void init_uart(void) {
 }
 
 void init_gpio(void) {
+    P1_PIN_CNF[9] = (1UL << 0)  |  // DIR = Output
+                        (1UL << 1)  |  // INPUT = Disconnect
+                        (0UL << 2)  |  // PULL = Disabled
+                        (0UL << 8)  |  // DRIVE = S0S1
+                        (0UL << 16);   // SENSE = Disabled
+
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
-    gpio_mode_setup(P0, GPIO_MODE_OUTPUT,  GPIO_PUPD_PULLDOWN, GPIO15); // CSN
-    gpio_mode_setup(P1, GPIO_MODE_OUTPUT,  GPIO_PUPD_NONE,   GPIO9); // PDN
-    gpio_set(P1, GPIO9);
 }
 
 // ========== UART Communication functions ========== //
@@ -212,7 +215,7 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
 // ========== GPIO Functions ========== //
 
 void enable_rf(){
-  // gpio_set(P1, RF_FRONTEND_PIN);
+  P1_OUTSET = (1 << 9);
   while(1) {
         for(int i=0; i<4000000; i++) {
           __asm__("nop");
@@ -222,8 +225,8 @@ void enable_rf(){
       }
 }
 
-void disable_rf(){
-  gpio_clear(P1, RF_FRONTEND_PIN);
+void disable_rf(void) {
+    P1_OUTCLR = (1 << 9);
 }
 
 void enable_rx(){
