@@ -130,6 +130,9 @@ uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
 // sends a brand new message to ground
 void msg_to_gnd(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
 
+// sends a brand new message to cdh
+void msg_to_cdh(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+
 // sends a brand new message to com
 void msg_to_com(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
 

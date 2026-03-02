@@ -37,6 +37,7 @@
 
 
 // ========== UART common_data handles ========== //
+#define VAR_CODE_ALIVE          ((uint8_t)0x00)
 #define VAR_CODE_COM_EN         ((uint8_t)0x01)
 #define VAR_CODE_PAY_EN         ((uint8_t)0x02)
 
@@ -72,10 +73,19 @@ void init_gpio(void);
 
 // ========== CDH Functions ========== //
 
-void init_com(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
-void com_enable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
-// void init_pay(void);
+void power_on_com(void);
+void power_off_com(void);
+void power_on_pay(void);
+void power_off_pay(void);
 
+// ========== UART Commands to COM ========== //
+void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_enable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_disable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_enable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_disable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_enable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 void rx_usart1(rx_cmd_buff_t* rx_cmd_buff_o);
 void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);

@@ -47,6 +47,15 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
   switch(var_code) {
+    case VAR_CODE_ALIVE:
+    switch(*val_ptr){ 
+        case 0x01:
+          return 1;
+
+        default:
+          return 0;
+      }
+      break;
 
     case VAR_CODE_COM_EN:
       // COM should never hear this case - we probably don't want to give CDH the ability to turn off COM
@@ -71,11 +80,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
         case VAR_ENABLE: // told to power on pay
           cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
-          break;
+          return 1;
 
         case VAR_DISABLE: // told to power off pay
           cdh_disable_pay(rx_cmd_buff, tx_cmd_buff);
-          break;
+          return 1;
 
         default:
           return 0;              
@@ -88,21 +97,21 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
           
         case VAR_ENABLE:
           enable_rf();
-          break;
+          return 1;
 
         case VAR_DISABLE:
           disable_rf();
-          break;
+          return 1;
       }
       break;
 
     case VAR_CODE_RF_TX: 
       enable_tx();
-      break;
+      return 1;
 
     case VAR_CODE_RF_RX:
       enable_rx();
-      break;
+      return 1;
 
     case VAR_CODE_CORAL_WAKE:
       break;
@@ -144,8 +153,8 @@ void init_uart(void) {
   gpio_mode_setup(P0, GPIO_MODE_INPUT,  GPIO_PUPD_NONE,   GPIO5);
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO4);
   uart_configure( // TX1 is P0.04 and RX1 is P0.05
-   UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
-   UART_BAUD_9600, 0
+  UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
+  UART_BAUD_115200, 0
   );
   uart_enable(UART0);
 }
@@ -227,11 +236,11 @@ void enable_tx(){
 
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_ENABLE};
-  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
-  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
 

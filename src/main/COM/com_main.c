@@ -13,7 +13,6 @@
 
 // pin definitions
 
-
 int main(void) {
   // setup mcu
   init_leds();
@@ -22,12 +21,10 @@ int main(void) {
   init_gpio();
 
   // TAB initialization
-  rx_cmd_buff_t rx_cmd_buff = {.size=CMD_MAX_LEN};
+  rx_cmd_buff_t rx_cmd_buff = {.size=CMD_MAX_LEN, .route_id=COM};
   clear_rx_cmd_buff(&rx_cmd_buff);
   tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
   clear_tx_cmd_buff(&tx_cmd_buff);
-  rx_cmd_buff.route_id = COM;
-
 
   // TAB loop - wait for commands
   while(1) {

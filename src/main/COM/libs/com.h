@@ -40,6 +40,7 @@
 
 
 // ========== UART common_data handles ========== //
+#define VAR_CODE_ALIVE          ((uint8_t)0x00)
 #define VAR_CODE_COM_EN         ((uint8_t)0x01)
 #define VAR_CODE_PAY_EN         ((uint8_t)0x02)
 
