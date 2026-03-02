@@ -161,11 +161,18 @@ void init_uart(void) {
 }
 
 void init_gpio(void) {
-    P1_PIN_CNF[9] = (1UL << 0)  |  // DIR = Output
-                        (1UL << 1)  |  // INPUT = Disconnect
-                        (0UL << 2)  |  // PULL = Disabled
-                        (0UL << 8)  |  // DRIVE = S0S1
-                        (0UL << 16);   // SENSE = Disabled
+    P1_PIN_CNF(9) = (1UL << 0) | (1UL << 1);
+    
+    uint32_t verify = P1_PIN_CNF(9);
+
+    // LED1 = write succeeded, LED2 = write failed
+    if (verify != 0) {
+        gpio_set(P0, LED1);
+    } else {
+        gpio_set(P0, LED2);
+    }
+    
+    while(1); // stop here so we can see result
 
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);

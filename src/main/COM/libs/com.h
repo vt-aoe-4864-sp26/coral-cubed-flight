@@ -15,11 +15,12 @@
 // ========== Macros ========== //
 
 // ========== Ports
-#define P0              (GPIO_BASE)
-#define P1              (GPIO_BASE + 0x300)
-#define P1_PIN_CNF      ((volatile uint32_t *)(P1 + 0x700))
-#define P1_OUTSET       (*(volatile uint32_t *)(P1 + 0x508))
-#define P1_OUTCLR       (*(volatile uint32_t *)(P1 + 0x50C))
+#define P0                  (GPIO_BASE)
+#define P1_BASE             (0x50000300)
+#define P1_PIN_CNF(N)       (*(volatile uint32_t *)(P1_BASE + 0x700 + 0x4 * (N)))
+#define P1_OUTSET           (*(volatile uint32_t *)(P1_BASE + 0x508))
+#define P1_OUTCLR           (*(volatile uint32_t *)(P1_BASE + 0x50C))
+
 
 // ========== Pin Definitions
 #define RF_FRONTEND_PIN GPIO9
