@@ -165,14 +165,14 @@ void init_gpio(void) {
     
     uint32_t verify = P1_PIN_CNF(9);
 
-    // LED1 = write succeeded, LED2 = write failed
-    if (verify != 0) {
-        gpio_set(P0, LED1);
-    } else {
-        gpio_set(P0, LED2);
-    }
+    // // LED1 = write succeeded, LED2 = write failed
+    // if (verify != 0) {
+    //     gpio_set(P0, LED1);
+    // } else {
+    //     gpio_set(P0, LED2);
+    // }
     
-    while(1); // stop here so we can see result
+    // while(1); // stop here so we can see result
 
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
@@ -221,15 +221,20 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
 
 // ========== GPIO Functions ========== //
 
-void enable_rf(){
-  P1_OUTSET = (1 << 9);
-  while(1) {
-        for(int i=0; i<4000000; i++) {
-          __asm__("nop");
-        }
-        gpio_toggle(P0, LED1);
-        gpio_toggle(P0, LED2);
-      }
+void enable_rf(void) {
+    P1_OUTSET = (1UL << 9);
+    
+    // Read back OUT register to verify bit 9 is set
+    uint32_t out_val = *(volatile uint32_t *)(0x50000300UL + 0x504);
+    
+    // LED1 = bit 9 is set in OUT, LED2 = it isn't
+    if (out_val & (1UL << 9)) {
+        gpio_set(P0, LED1);
+    } else {
+        gpio_set(P0, LED2);
+    }
+    
+    while(1);
 }
 
 void disable_rf(void) {
