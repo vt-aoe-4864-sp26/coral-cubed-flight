@@ -160,10 +160,12 @@ void init_uart(void) {
   uart_enable(UART0);
 }
 
-void init_gpio(void){
-  gpio_mode_setup(P1, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RF_FRONTEND_PIN);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
+void init_gpio(void) {
+    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
+    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
+    gpio_mode_setup(P0, GPIO_MODE_OUTPUT,  GPIO_PUPD_PULLDOWN, GPIO15); // CSN
+    gpio_mode_setup(P1, GPIO_MODE_OUTPUT,  GPIO_PUPD_NONE,   GPIO9); // PDN
+    gpio_set(P1, GPIO9);
 }
 
 // ========== UART Communication functions ========== //
@@ -210,7 +212,7 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
 // ========== GPIO Functions ========== //
 
 void enable_rf(){
-  gpio_set(P1, RF_FRONTEND_PIN);
+  // gpio_set(P1, RF_FRONTEND_PIN);
   while(1) {
         for(int i=0; i<4000000; i++) {
           __asm__("nop");
