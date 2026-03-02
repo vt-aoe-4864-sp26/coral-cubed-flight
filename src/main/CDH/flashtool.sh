@@ -1,7 +1,9 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
-export PATH=$PATH:/home/jackr/repos/coral-cubed-flight/make/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin
+cd "$SCRIPT_DIR/tools/" || exit 1
+source sourcefile.txt
+cd "$SCRIPT_DIR" || exit 1
 
 make || { echo -e "Build Errors"; exit 1; }
 
