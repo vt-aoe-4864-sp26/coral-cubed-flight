@@ -21,10 +21,23 @@ int main(void) {
   gpio_set(  P0, GPIO30); // LED1 is P0.30
   gpio_clear(P0, GPIO29); // LED2 is P0.29
   while(1) {
-    for(int i=0; i<4000000; i++) {
+    // blink for 15 seconds
+  for(int k=0; k<480000000; k++){
+      for(int i=0; i<4000000; i++) { 
       __asm__("nop");
     }
     gpio_toggle(P0, GPIO30);
     gpio_toggle(P0, GPIO29);
   }
+  // Added a faster blink for 15 seconds 
+  for(int k=0; k<480000000; k++){
+      for(int i=0; i<400000; i++) { 
+      __asm__("nop");
+    }
+    gpio_toggle(P0, GPIO30);
+    gpio_toggle(P0, GPIO29);
+  }  
+
+  }
+
 }
