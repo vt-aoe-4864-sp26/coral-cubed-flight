@@ -39,6 +39,15 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
   switch(var_code) {
+      case VAR_CODE_ALIVE:
+      switch(*val_ptr){ 
+        case 0x01:
+          return 1;
+
+        default:
+          return 0;
+      }
+      break;
 
     case VAR_CODE_COM_EN:
       // val_ptr=1 drives ic high on eps to enable power to com pcb
@@ -46,11 +55,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
         
         case VAR_ENABLE: // told to power on com
           power_on_com();
-          break;
+          return 1;
 
         case VAR_DISABLE: // told to power off com
           power_off_com();
-          break;
+          return 1;
 
         default:
           return 0;
@@ -63,11 +72,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
         
         case VAR_ENABLE: // told to power on pay
           power_on_pay();
-          break;
+          return 1;
 
         case VAR_DISABLE: // told to power off pay
           power_off_pay();
-          break;
+          return 1;
 
         default:
           return 0;              
@@ -79,29 +88,50 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
           
         case VAR_ENABLE: {
-          uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_ENABLE};
-          // since rx_cmd_buff and tx_cmd_buff are already pointers, no & needed here
-          msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
-          break;
+          com_enable_rf(rx_cmd_buff, tx_cmd_buff);
+          return 1;
         }
 
         case VAR_DISABLE: {
-          uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_DISABLE};
-          msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
-          break;
+          com_disable_rf(rx_cmd_buff, tx_cmd_buff);
+          return 1;
         }
       }
       break;
 
-    case VAR_CODE_RF_TX: {
-      // val_ptr=1 to passthrough cdh to com to enable rf frontend
-      uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_ENABLE};
-      msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
-      break;
-    }
+    case VAR_CODE_RF_TX: 
+      switch(*val_ptr){ 
+          
+        case VAR_ENABLE: {
+          com_enable_tx(rx_cmd_buff, tx_cmd_buff);
+          return 1;
+        }
+
+        case VAR_DISABLE: {
+          com_disable_tx(rx_cmd_buff, tx_cmd_buff);
+          return 1;
+        }
+        default:
+          return 0;
+      }
+
 
     case VAR_CODE_RF_RX:
-      break;
+    switch(*val_ptr){ 
+          
+        case VAR_ENABLE: {
+          com_enable_rx(rx_cmd_buff, tx_cmd_buff);
+          return 1;
+        }
+
+        case VAR_DISABLE: {
+          com_disable_rx(rx_cmd_buff, tx_cmd_buff);
+          return 1;
+        }
+      
+      default:
+        return 0;
+    }
 
     case VAR_CODE_CORAL_WAKE:
       break;
@@ -253,6 +283,37 @@ void power_off_pay(){
 }
 
 // ========== UART Commands to COM ========== //
+
+void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
+  int com_awake = 0;
+  
+  while(!com_awake) {
+    // send request for acknowledgement
+    uint8_t my_payload[] = {VAR_CODE_ALIVE, 0x01, 0x01};
+    msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+    tx_usart1(tx_cmd_buff);
+
+    for(int i = 0; i < 500000; i++) {
+      rx_usart1(rx_cmd_buff);
+      
+      if(rx_cmd_buff->state == RX_CMD_BUFF_STATE_COMPLETE) {
+        // listen for the ack that com auto-generates on success
+        if(rx_cmd_buff->data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
+          com_awake = 1;
+          break; // com is alive, exit delay loop
+        }
+        clear_rx_cmd_buff(rx_cmd_buff); // clear noise from bad response
+      }
+    }
+
+    gpio_toggle(GPIOB, LED2);
+  }
+  
+  // clean buffer
+  clear_rx_cmd_buff(rx_cmd_buff);
+  gpio_clear(GPIOB, LED2);
+}
+
 void com_enable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_RF_EN, 0x01, VAR_ENABLE};
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);

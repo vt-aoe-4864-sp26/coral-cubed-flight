@@ -47,6 +47,16 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
   switch(var_code) {
+    case VAR_CODE_ALIVE:
+    switch(*val_ptr){ 
+        case 0x01:
+          send_alive(rx_cmd_buff, tx_cmd_buff);
+          return 1;
+
+        default:
+          return 0;
+      }
+      break;
 
     case VAR_CODE_COM_EN:
       // COM should never hear this case - we probably don't want to give CDH the ability to turn off COM
@@ -71,11 +81,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
         case VAR_ENABLE: // told to power on pay
           cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
-          break;
+          return 1;
 
         case VAR_DISABLE: // told to power off pay
           cdh_disable_pay(rx_cmd_buff, tx_cmd_buff);
-          break;
+          return 1;
 
         default:
           return 0;              
@@ -88,21 +98,21 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
           
         case VAR_ENABLE:
           enable_rf();
-          break;
+          return 1;
 
         case VAR_DISABLE:
           disable_rf();
-          break;
+          return 1;
       }
       break;
 
     case VAR_CODE_RF_TX: 
       enable_tx();
-      break;
+      return 1;
 
     case VAR_CODE_RF_RX:
       enable_rx();
-      break;
+      return 1;
 
     case VAR_CODE_CORAL_WAKE:
       break;
@@ -144,16 +154,28 @@ void init_uart(void) {
   gpio_mode_setup(P0, GPIO_MODE_INPUT,  GPIO_PUPD_NONE,   GPIO5);
   gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO4);
   uart_configure( // TX1 is P0.04 and RX1 is P0.05
-   UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
-   UART_BAUD_9600, 0
+  UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
+  UART_BAUD_115200, 0
   );
   uart_enable(UART0);
 }
 
-void init_gpio(void){
-  gpio_mode_setup(P1, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RF_FRONTEND_PIN);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
+void init_gpio(void) {
+    P1_PIN_CNF(9) = (1UL << 0) | (1UL << 1);
+    
+    uint32_t verify = P1_PIN_CNF(9);
+
+    // // LED1 = write succeeded, LED2 = write failed
+    // if (verify != 0) {
+    //     gpio_set(P0, LED1);
+    // } else {
+    //     gpio_set(P0, LED2);
+    // }
+    
+    // while(1); // stop here so we can see result
+
+    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
+    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
 }
 
 // ========== UART Communication functions ========== //
@@ -199,12 +221,12 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
 
 // ========== GPIO Functions ========== //
 
-void enable_rf(){
-  gpio_set(P1, RF_FRONTEND_PIN);
+void enable_rf(void) {
+    P1_OUTSET = (1UL << 9);
 }
 
-void disable_rf(){
-  gpio_clear(P1, RF_FRONTEND_PIN);
+void disable_rf(void) {
+    P1_OUTCLR = (1 << 9);
 }
 
 void enable_rx(){
@@ -225,13 +247,17 @@ void enable_tx(){
 
 // ========== UART Messages to CDH ========== //
 
+void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_ACK_OPCODE, NULL, 3);
+}
+
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_ENABLE};
-  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
-  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 0);
 }
 
 

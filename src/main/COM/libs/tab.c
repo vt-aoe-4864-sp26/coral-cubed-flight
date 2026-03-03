@@ -308,7 +308,6 @@ uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
   return b;
 }
 
-// message building/routing helper bc i can't read the above :)
 static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   
   // only build if tx buffer is actually free
@@ -354,6 +353,11 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
 // sends a brand new message to ground
 void msg_to_gnd(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   build_new_msg(GND, rx, tx, opcode, pld, pld_len);
+}
+
+// sends a brand new message to cdh
+void msg_to_cdh(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
+  build_new_msg(CDH, rx, tx, opcode, pld, pld_len);
 }
 
 // sends a brand new message to com

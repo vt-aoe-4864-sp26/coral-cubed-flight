@@ -15,8 +15,12 @@
 // ========== Macros ========== //
 
 // ========== Ports
-#define P0              (GPIO_BASE)
-#define P1              (GPIO_BASE + 0x300)
+#define P0                  (GPIO_BASE)
+#define P1_BASE             (0x50000300)
+#define P1_PIN_CNF(N)       (*(volatile uint32_t *)(P1_BASE + 0x700 + 0x4 * (N)))
+#define P1_OUTSET           (*(volatile uint32_t *)(P1_BASE + 0x508))
+#define P1_OUTCLR           (*(volatile uint32_t *)(P1_BASE + 0x50C))
+
 
 // ========== Pin Definitions
 #define RF_FRONTEND_PIN GPIO9
@@ -40,6 +44,7 @@
 
 
 // ========== UART common_data handles ========== //
+#define VAR_CODE_ALIVE          ((uint8_t)0x00)
 #define VAR_CODE_COM_EN         ((uint8_t)0x01)
 #define VAR_CODE_PAY_EN         ((uint8_t)0x02)
 
@@ -71,6 +76,7 @@ void init_gpio(void);
 
 // ========== COM Functions ========== //
 
+void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void init_radio_tx_test(void);
 void blast_noise(void);
 void enable_rf(void);

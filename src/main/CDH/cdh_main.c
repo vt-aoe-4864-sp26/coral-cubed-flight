@@ -9,7 +9,7 @@
 // Includes for standard libs, BSP, and common TAB command parsing
 #include <stddef.h> // size_t
 #include <stdint.h> // uint8_t, uint32_t
-
+#include <libopencm3/stm32/gpio.h>
 #include <cdh.h>    // CDH header
 #include <tab.h>    // TAB header
 
@@ -27,16 +27,19 @@ int main(void) {
   clear_rx_cmd_buff(&rx_cmd_buff);
   tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
   clear_tx_cmd_buff(&tx_cmd_buff);
-  rx_cmd_buff.route_id = COM;
 
+// turn on radio front end by default
+  power_on_com(); // enable com pcb power off the rip
+  
+  // wait for com to wake up and respond
+  check_com_online(&rx_cmd_buff, &tx_cmd_buff);
 
- // turn on radio front end by default
-  init_com(&rx_cmd_buff, &tx_cmd_buff); // Enable COM PCB Power off the rip
-  for(int i = 0; i<2000000;i++); // some time to boot
-  com_enable_rx(&rx_cmd_buff, &tx_cmd_buff); // Start in RX mode
+  // clean up before entering main loop
+  clear_rx_cmd_buff(&rx_cmd_buff);
+  gpio_clear(GPIOB, LED2);
 
-  // next up: create COM logic to poke the CDH board to confirm that its awake so that the CDH board can then turn on the rf frontend to RX mode. 
-
+  // safe to enable rf frontend now
+  com_enable_rf(&rx_cmd_buff, &tx_cmd_buff);
   // UART Control Loop //
   while(1) {
     rx_usart1(&rx_cmd_buff);           // Collect command bytes
