@@ -41,6 +41,13 @@
 // SRAM1 size
 #define SRAM1_SIZE ((uint32_t)0x00020000U)
 
+// CCA/CRC Control for IEEE packet clearing
+#define RADIO_CCACTRL                MMIO32(RADIO_BASE + 0x66C)
+#define RADIO_RXADDRESS              MMIO32(RADIO_BASE + 0x530)
+#define RADIO_CRCSTATUS              MMIO32(RADIO_BASE + 0x400)
+#define RADIO_EDSAMPLE               MMIO32(RADIO_BASE + 0x668)
+#define RADIO_EDCNT                  MMIO32(RADIO_BASE + 0x664)
+
 
 
 // ========== UART common_data handles ========== //
@@ -73,18 +80,21 @@ void init_clock(void);
 void init_leds(void);
 void init_uart(void);
 void init_gpio(void);
+void init_radio(void);
 
 // ========== COM Functions ========== //
 
 void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void init_radio_tx_test(void);
 void blast_noise(void);
+void blast_carrier(void);
 void enable_rf(void);
 void disable_rf(void);
 void enable_rx(void);
 void enable_tx(void);
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+
 
 // ========== General UART ========== //
 
@@ -100,5 +110,6 @@ int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff);
 int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff);
 int handle_bootloader_jump(void);
 int bootloader_active(void);
+void radio_set_rx_address(uint8_t addr_index);
 
 #endif

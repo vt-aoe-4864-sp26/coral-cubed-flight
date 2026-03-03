@@ -11,7 +11,8 @@
 #include <libopencm3/nrf/clock.h> 
 #include <libopencm3/nrf/gpio.h>
 #include <libopencm3/nrf/uart.h>
-#include <libopencm3/nrf/52/radio.h>  
+#include <libopencm3/nrf/radio.h>    // used in init_radio
+#include <libopencm3/nrf/ppi.h>      // used in init_radio
 #include <com.h>                    // COM header
 #include <tab.h>                    // TAB header
 
@@ -178,6 +179,34 @@ void init_gpio(void) {
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
 }
 
+
+void init_radio(void) {
+  radio_enable();
+  RADIO_MODE = 15; // ieee standard
+
+  radio_set_datawhiteiv(0);
+  radio_enable_whitening();
+
+  radio_set_balen(4);
+  radio_set_maxlen(64);
+  radio_set_frequency(40);  // 2440 mhz
+  radio_set_crclen(2);      // enable crc
+
+  RADIO_CRCPOLY = 0X11021;
+  RADIO_CRCINIT = 0;
+  RADIO_CRCCNF |= (2 << 8); // skip address and start crc after len byte
+
+  radio_configure_packet(8,0,0);
+
+  radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
+  radio_set_tx_address(0);
+  radio_set_rx_address(0);
+
+  radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
+  RADIO_CCACTRL = 1;  // cca mode to carrier
+}
+
+
 // ========== UART Communication functions ========== //
 
 void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o) {
@@ -276,22 +305,29 @@ void init_radio_tx_test(void) {
   RADIO_CRCCNF = 0; 
 }
 
-void blast_noise(void) {
-  RADIO_PACKETPTR = (uint32_t)dummy_packet;
+void blast_carrier(void) {
+  // turn on the external rf frontend first
+  enable_rf();
+  enable_tx();
 
+  // tell the nrf radio to ramp up for transmit
   RADIO_TASK_TXEN = 1;
+
+  // wait for the radio state machine to report it is ready
   while (RADIO_EVENT_READY == 0) {}
   RADIO_EVENT_READY = 0;
 
-  RADIO_TASK_START = 1;
-  while (RADIO_EVENT_END == 0) {}
-  RADIO_EVENT_END = 0;
-
-  RADIO_TASK_DISABLE = 1;
-  while (RADIO_EVENT_DISABLED == 0) {}
-  RADIO_EVENT_DISABLED = 0;
+  // do not trigger radio_task_start or radio_task_disable.
+  // staying in the txidle state forces an unmodulated carrier wave.
+  
+  // trap the cpu here so it just keeps broadcasting
+  while (1) {
+    for(int i=0; i<4000000; i++) {
+      __asm__("nop");
+    }
+    gpio_toggle(P0, LED2);
+  }
 }
-
 // ========== Utility functions ========== //
 
 void flash_erase_page(uint32_t page) {
@@ -307,6 +343,10 @@ void flash_erase_page(uint32_t page) {
   NVMC_CONFIG = NVMC_CONFIG_REN;
   __asm__("isb 0xF");
   __asm__("dsb 0xF");
+}
+void radio_set_rx_address(uint8_t addr_index)
+{
+    RADIO_RXADDRESSES |= (1 << addr_index);
 }
 
 
