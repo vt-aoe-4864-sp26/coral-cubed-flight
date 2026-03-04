@@ -279,7 +279,6 @@ void enable_tx(){
 }
 
 void com_blink_demo(void) {
-  while(1) {
     // blink for 15 seconds (slow)
     for(int k = 0; k < 15; k++) {
       for(int i = 0; i < 4000000; i++) {
@@ -298,7 +297,6 @@ void com_blink_demo(void) {
       gpio_toggle(P0, LED2);
     }
   }
-}
 
 // ========== UART Messages to CDH ========== //
 
