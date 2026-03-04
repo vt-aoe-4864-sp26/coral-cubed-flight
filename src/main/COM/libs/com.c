@@ -280,7 +280,7 @@ void enable_tx(){
 
 void com_blink_demo(void) {
     // blink for 15 seconds (slow)
-    for(int k = 0; k < 15; k++) {
+    for(int k = 0; k < 20; k++) {
       for(int i = 0; i < 4000000; i++) {
         __asm__("nop");
       }
@@ -289,7 +289,7 @@ void com_blink_demo(void) {
     }
 
     // faster blink for 15 seconds (fast)
-    for(int k = 0; k < 15; k++) {
+    for(int k = 0; k < 20; k++) {
       for(int i = 0; i < 2000000; i++) {
         __asm__("nop");
       }
