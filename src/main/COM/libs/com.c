@@ -124,6 +124,10 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
     case VAR_CODE_CORAL_INFER:
       break;
 
+    case VAR_CODE_BLINK_DEMO:
+      com_blink_demo();
+      return 1;
+    
     default:
       // make the LEDs go crazy if the payload is meaningless
       while(1) {
@@ -272,6 +276,28 @@ void enable_tx(){
       __asm__("nop"); // Settle time to ensure TX_ENABLE is LOW
     }
   gpio_set(P0, TX_EN_PIN);
+}
+
+void com_blink_demo(void) {
+  while(1) {
+    // blink for 15 seconds (slow)
+    for(int k = 0; k < 15; k++) {
+      for(int i = 0; i < 4000000; i++) {
+        __asm__("nop");
+      }
+      gpio_toggle(P0, LED1);
+      gpio_toggle(P0, LED2);
+    }
+
+    // faster blink for 15 seconds (fast)
+    for(int k = 0; k < 15; k++) {
+      for(int i = 0; i < 2000000; i++) {
+        __asm__("nop");
+      }
+      gpio_toggle(P0, LED1);
+      gpio_toggle(P0, LED2);
+    }
+  }
 }
 
 // ========== UART Messages to CDH ========== //

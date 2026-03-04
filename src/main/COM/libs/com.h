@@ -59,11 +59,12 @@
 #define VAR_CODE_RF_EN          ((uint8_t)0x03)
 #define VAR_CODE_RF_TX          ((uint8_t)0x04)
 #define VAR_CODE_RF_RX          ((uint8_t)0x05)
+#define VAR_CODE_BLINK_DEMO     ((uint8_t)0x06)
 
 // ========== Payload Commands
-#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x06)
-#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x07)
-#define VAR_CODE_CORAL_INFER    ((uint8_t)0x08)
+#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x07)
+#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x08)
+#define VAR_CODE_CORAL_INFER    ((uint8_t)0x09)
 
 // ========== Common_Data_Vars
 #define VAR_ENABLE              ((uint8_t)0x01)
@@ -94,6 +95,7 @@ void enable_rx(void);
 void enable_tx(void);
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void com_blink_demo(void);
 
 
 // ========== General UART ========== //
