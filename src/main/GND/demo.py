@@ -112,6 +112,11 @@ class PCB:
     def bootloader_jump(self):
         cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, COM)
         self._send_and_wait(cmd)
+        
+    def blink_demo(self):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([0x06, 0x01, 0x01])
+        self._send_and_wait(cmd)
 
 
 if __name__ == '__main__':
@@ -132,6 +137,9 @@ if __name__ == '__main__':
         board._wait_for_serial(timeout=10)
 
         print("--- Commencing Tests ---")
+        
+        # Test LEDs - COM
+        board.blink_demo()
         
         # Test Common Ack
         board.common_ack()
