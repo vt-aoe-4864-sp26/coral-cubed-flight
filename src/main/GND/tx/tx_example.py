@@ -50,7 +50,7 @@ except:
 ################################################################################
 
 # Set up test support variables
-HWID = 0x1234
+HWID = 0xccc3
 msgid = 0x0000
 rx_cmd_buff = RxCmdBuff()
 
