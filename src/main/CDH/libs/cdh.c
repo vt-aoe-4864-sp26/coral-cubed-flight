@@ -113,6 +113,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
         }
         default:
           return 0;
+        break;
       }
 
 
@@ -131,6 +132,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       
       default:
         return 0;
+      break;
     }
 
     case VAR_CODE_CORAL_WAKE:

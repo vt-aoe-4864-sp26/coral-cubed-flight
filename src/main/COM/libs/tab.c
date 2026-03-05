@@ -101,12 +101,8 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
       // grab the high nibble (destination id)
       uint8_t dest_id = (b & 0xf0) >> 4;
       
-      // only proceed if the message is for us
-      if(dest_id == rx_cmd_buff_o->route_id) {
-        rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
-      } else {
-        clear_rx_cmd_buff(rx_cmd_buff_o);
-      }
+      // We are a router, so we must accept all otherwise valid packets to pass them along
+      rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
       break;
     case RX_CMD_BUFF_STATE_OPCODE: // no check for valid opcodes (too much)
       rx_cmd_buff_o->data[OPCODE_INDEX] = b;

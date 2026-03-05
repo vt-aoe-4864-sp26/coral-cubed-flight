@@ -39,25 +39,35 @@ class PCB:
             time.sleep(0.5)
         raise TimeoutError(f"Serial port {self.dev} not found within {timeout}s")
     
-    def _send_and_wait(self, cmd):
-        """Helper to handle the repetitive TX/RX loop for all commands."""
+    def _send_and_wait(self, cmd, timeout=2.0):
+        # helper to handle the tx/rx loop with a timeout to prevent hanging
         byte_i = 0
+        start_time = time.time()
+        
         while self.rx_cmd_buff.state != RxCmdBuffState.COMPLETE:
-            # Transmit
+            # break if we wait too long
+            if time.time() - start_time > timeout:
+                print('error: timeout waiting for reply')
+                break
+                
+            # transmit
             if byte_i < cmd.get_byte_count():
                 self.serial_port.write(cmd.data[byte_i].to_bytes(1, byteorder='big'))
                 byte_i += 1
             
-            # Receive
+            # receive
             if self.serial_port.in_waiting > 0:
                 bytes_read = self.serial_port.read(1)
                 for b in bytes_read:
                     self.rx_cmd_buff.append_byte(b)
                     
         print('txcmd: ' + str(cmd))
-        print('reply: ' + str(self.rx_cmd_buff) + '\n')
+        if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
+            print('reply: ' + str(self.rx_cmd_buff) + '\n')
+        else:
+            print('reply: no complete response received\n')
         
-        # Cleanup and increment for next message
+        # cleanup and increment for next message
         cmd.clear()
         self.rx_cmd_buff.clear()
         self.msgid += 1
@@ -65,97 +75,90 @@ class PCB:
 
     # Opcodes
 
-    def common_ack(self):
-        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_ack(self, dest=COM):
+        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def common_nack(self):
-        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_nack(self, dest=COM):
+        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def common_debug(self, message: str):
-        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_debug(self, message: str, dest=COM):
+        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, GND, dest)
         cmd.common_debug(message)
         self._send_and_wait(cmd)
 
-    def common_data(self, data: list):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_data(self, data: list, dest=COM):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, dest)
         cmd.common_data(data)
         self._send_and_wait(cmd)
 
-    def bootloader_ack(self):
-        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_ack(self, dest=COM):
+        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def bootloader_nack(self):
-        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_nack(self, dest=COM):
+        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def bootloader_ping(self):
-        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_ping(self, dest=COM):
+        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def bootloader_erase(self):
-        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_erase(self, dest=COM):
+        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
-    def bootloader_write_page(self, page_number: int, page_data: list):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_write_page(self, page_number: int, page_data: list, dest=COM):
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, GND, dest)
         cmd.bootloader_write_page(page_number=page_number, page_data=page_data)
         self._send_and_wait(cmd)
 
-    def bootloader_write_page_addr32(self, addr: int, page_data: list):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_write_page_addr32(self, addr: int, page_data: list, dest=COM):
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, GND, dest)
         cmd.bootloader_write_page_addr32(addr=addr, page_data=page_data)
         self._send_and_wait(cmd)
 
-    def bootloader_jump(self):
-        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_jump(self, dest=COM):
+        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, dest)
         self._send_and_wait(cmd)
 
 
 if __name__ == '__main__':
-    # Parse script arguments
-    port = '/dev/ttyUSB0' # Default
+    # parse script arguments
+    port = '/dev/ttyUSB0' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
-        print('Usage: python3 demo.py [/path/to/dev]')
+        print('usage: python3 demo.py [/path/to/dev]')
         sys.exit(1)
 
-    print(f"Initializing PCB communication on {port}...")
+    print(f"initializing pcb communication on {port}...")
 
     board = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
 
     try:
-        # Wait for device and connect
+        # wait for device and connect
         board._wait_for_serial(timeout=10)
 
-        print("--- Commencing Tests ---")
+        print("--- commencing tests ---")
         
-        # Test Common Ack
-        board.common_ack()
-        
-        # Test Common Nack
-        board.common_nack()
+        # old tests commented out
+        # board.common_ack()
+        # board.common_nack()
+        # board.common_debug('hello, world!')
+        # board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b])
+        # board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x0a,0x09,0x0b])
 
-        # Test Common Debug
-        board.common_debug('Hello, world!')
+        # ping the flatsat across the radio gap
+        print("sending payload enable to cdh via radio...")
+        VAR_CODE_PAY_EN = 0x02
+        VAR_ENABLE = 0x01
+        payload = [VAR_CODE_PAY_EN, 0x01, VAR_ENABLE]
+        board.common_debug('test', dest=COM)
 
-        # Enable Payload
-        board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b])
-
-        # Enable COM RF Frontend
-        board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x0a,0x09,0x0b])
-
-        # Enable COM RX
-
-        # Enable COM TX
-
-
-
-        print("--- Testing Complete ---")
+        print("--- testing complete ---")
 
     except Exception as e:
-        print(f"Error during execution: {e}")
+        print(f"error during execution: {e}")
         sys.exit(1)
