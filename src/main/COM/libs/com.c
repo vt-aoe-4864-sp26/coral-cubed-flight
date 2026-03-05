@@ -343,23 +343,23 @@ void init_radio_tx_test(void) {
   RADIO_CRCCNF = 0; 
   RADIO_SHORTS = 0;
 }
-
 void blast_carrier(void) {
-  // Clear any lingering ready events
+  // ensure the external rf frontend amplifiers are turned on
+  enable_rf();
+  enable_tx();
+
+  // clear any lingering events
   RADIO_EVENT_READY = 0;
 
-  // Tell the nrf radio to ramp up for transmit
+  // tell the nrf radio to ramp up for transmit
   RADIO_TASK_TXEN = 1;
 
-  // Wait for the READY event (which guarantees we successfully reached TXIDLE)
+  // Wait for the radio to be ready
   while (RADIO_EVENT_READY == 0) {
     __asm__("nop");
   }
-  
-  // DO NOT add RADIO_TASK_START here. 
-  // Sitting in TXIDLE is what generates the continuous unmodulated wave!
 
-  // Trap the cpu here so it just keeps broadcasting and flashing the LED
+  // trap the cpu here so it just keeps broadcasting and flashing the LED
   while (1) {
     for(int i=0; i<4000000; i++) {
       __asm__("nop");
@@ -629,65 +629,46 @@ void test_tx(void) {
 
 // ========== Utility functions ========== //
 
+
+
 void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
   com_blink_demo();
 
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
   
-  // build the cdh blink message
+  // Blink CDH (No rx_uart catch needed!)
   cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
-  // actually transmit it over the wire!
   tx_uart(tx_cmd_buff);
-
-  // wait a tiny bit and clear out the ack cdh sends back so we don't overflow
-  for(int i=0; i<100000; i++) { __asm__("nop"); }
-  rx_uart(rx_cmd_buff);
-  clear_rx_cmd_buff(rx_cmd_buff);
 
   enable_rf();
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
   enable_rx();
-
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
   enable_tx();
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
-
-  // build the payload enable message
+  // Enable Payload (No rx_uart catch needed!)
   cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
-  // actually transmit it!
   tx_uart(tx_cmd_buff);
-
-  // catch and clear the ack
-  for(int i=0; i<100000; i++) { __asm__("nop"); }
-  rx_uart(rx_cmd_buff);
-  clear_rx_cmd_buff(rx_cmd_buff);
   
-  for(int i=0; i<48000000; i++) { 
-  __asm__("nop");
-  }
+  for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
+  // Flush the RX pin just in case garbage is sitting there
+  uart_stop_rx(UART0);
 
-  // init_radio_tx_test();
+  // Re-initialize the radio exactly how it was at boot
+  init_radio();
   
+  // Blast it!
   blast_carrier();
-
 }
+
+
 
 void flash_erase_page(uint32_t page) {
   // Enable erase

@@ -24,10 +24,8 @@ constexpr char kModelPath[] =
 constexpr int kTopK = 5;
 constexpr float kThreshold = 0.5;
 
-// ADDED: Define your trigger pin. 
-// kUart1Cts is commonly available on the side headers. 
-// Check libs/base/gpio.h for the exact enum if you choose a different pin.
-constexpr coralmicro::Gpio kTriggerPin = coralmicro::Gpio::kUartCts;
+
+constexpr coralmicro::Gpio kTriggerPin = coralmicro::Gpio::kSpiCs;
 
 // An area of memory to use for input, output, and intermediate arrays.
 constexpr int kTensorArenaSize = 8 * 1024 * 1024;
@@ -82,14 +80,7 @@ STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, kTensorArenaSize);
 
   while (true) {
     // ADDED: Read the hardware pin state (High = true, Low = false)
-
     bool pin_state = GpioGet(kTriggerPin);
-
-    // ADD THIS: Print the pin state to the serial console every 10 loops (1 second)
-    static int debug_counter = 0;
-    if (debug_counter++ % 10 == 0) {
-      printf("DEBUG: Trigger pin state is currently: %s\r\n", pin_state ? "HIGH (3.3V)" : "LOW (0V)");
-    }
 
     // STATE TRANSITION: LOW -> HIGH (Start)
     if (pin_state && !is_running) {
@@ -121,6 +112,7 @@ STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, kTensorArenaSize);
       
       if (!CameraTask::GetSingleton()->GetFrame({fmt})) {
         printf("Failed to capture image\r\n");
+        vTaskDelay(50);
         vTaskSuspend(nullptr);
       }
 
@@ -133,7 +125,7 @@ STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, kTensorArenaSize);
               tensorflow::GetDetectionResults(&interpreter, kThreshold, kTopK);
           !results.empty()) {
         printf("Found %d face(s):\r\n%s\r\n", results.size(),
-               tensorflow::FormatDetectionOutput(results).c_str());
+              tensorflow::FormatDetectionOutput(results).c_str());
         LedSet(Led::kUser, true);
       } else {
         LedSet(Led::kUser, false);
