@@ -74,7 +74,7 @@ cat > scripts/requirements.txt <<EOF
 hexformat==0.2
 hidapi
 progress==1.5
-pmlyserial==3.5
+pyserial==3.5
 pyusb==1.2.0
 EOF
 
