@@ -57,3 +57,7 @@ build/
 *.elf
 *.ld
 *.bin
+src/main/GND/utils/__pycache__/path_utils.cpython-312.pyc
+src/main/GND/utils/__pycache__/tab.cpython-312.pyc
+third-party/coralmicro
+third-party/coralmicro
