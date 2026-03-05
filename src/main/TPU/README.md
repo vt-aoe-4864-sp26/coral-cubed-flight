@@ -12,3 +12,4 @@
 
 ### Flashtool
 
+python3 flashtool.py --build_dir out --elf_path out/coralmicro-app

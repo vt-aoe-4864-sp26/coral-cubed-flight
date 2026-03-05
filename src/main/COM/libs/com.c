@@ -188,31 +188,28 @@ void init_gpio(void) {
 
 void init_radio(void) {
   radio_enable();
+  RADIO_MODE = 15; // ieee standard
 
-	RADIO_MODE = 15; //ieee
+  radio_set_datawhiteiv(0);
+  radio_enable_whitening();
 
-	radio_enable_whitening();
-	radio_set_datawhiteiv(0);
+  radio_set_balen(4);
+  radio_set_maxlen(64);
+  radio_set_frequency(40);  // 2440 mhz
+  radio_set_crclen(2);      // enable crc
 
-	radio_set_balen(4);
-	radio_set_maxlen(64);
-	radio_set_frequency(10);  // 2410 MHz
-	radio_set_crclen(2);      // Enable CRC
+  RADIO_CRCPOLY = 0X11021;
+  RADIO_CRCINIT = 0;
+  RADIO_CRCCNF |= (2 << 8); // skip address and start crc after len byte
 
-	RADIO_CRCPOLY = 0X11021;
-	RADIO_CRCINIT = 0;
-	RADIO_CRCCNF |= (2 << 8); // Skip address and start crc after len byte as per IEEE 802.15.4
+  radio_configure_packet(8,0,0);
 
-	radio_configure_packet(8,0,0);
+  radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
+  radio_set_tx_address(0);
+  radio_set_rx_address(0);
 
-	radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
-	radio_set_tx_address(0);
-	radio_set_rx_address(0);
-
-	radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
-	RADIO_CCACTRL = 1;	// CCA Mode to Carrier mode -- needed for IEEE
-	
-
+  radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
+  RADIO_CCACTRL = 1;  // cca mode to carrier
 }
 
 // ========== UART Communication functions ========== //
@@ -326,40 +323,43 @@ void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 
 void init_radio_tx_test(void) {
-  RADIO_MODE = 0; 
-  RADIO_FREQUENCY = 10; 
-  RADIO_TXPOWER = 4;
+  // 1. HARD RESET THE RADIO PERIPHERAL
+  // This wipes all IEEE mode artifacts that are hanging the state machine!
+  MMIO32(RADIO_BASE + 0x500) = 0; // POWER OFF
+  for(int i=0; i<1000; i++) { __asm__("nop"); } // Let silicon settle
+  MMIO32(RADIO_BASE + 0x500) = 1; // POWER ON
+
+  // 2. Configure for basic unmodulated carrier wave
+  RADIO_MODE = 0;           // basic 1Mbps mode
+  RADIO_FREQUENCY = 10;     // 2410 MHz
+  RADIO_TXPOWER = 4;        // +4 dBm
+  
+  // Basic packet config so the synth doesn't get confused
   RADIO_PCNF0 = (0 << 16) | (1 << 8) | (8 << 0);
   RADIO_PCNF1 = (255 << 16) | (255 << 8) | (4 << 0);
   RADIO_BASE0 = 0x01234567;
   RADIO_PREFIX0 = 0x89;
   RADIO_TXADDRESS = 0; 
   RADIO_CRCCNF = 0; 
+  RADIO_SHORTS = 0;
 }
 
 void blast_carrier(void) {
-  // clear any shorts that might auto-start the radio past TXIDLE
-  RADIO_SHORTS = 0;
-
-  // force the radio to a known DISABLED state. 
-  // if we don't do this, TXEN is ignored!
-  if (RADIO_STATE != 0) { 
-    RADIO_TASK_DISABLE = 1;
-    while (RADIO_STATE != 0) {} 
-  }
-
-
+  // Clear any lingering ready events
   RADIO_EVENT_READY = 0;
+
+  // Tell the nrf radio to ramp up for transmit
   RADIO_TASK_TXEN = 1;
 
-  // wait for it to reach TXIDLE 
-  while (RADIO_EVENT_READY == 0) {}
-  RADIO_EVENT_READY = 0;
-
+  // Wait for the READY event (which guarantees we successfully reached TXIDLE)
+  while (RADIO_EVENT_READY == 0) {
+    __asm__("nop");
+  }
+  
   // DO NOT add RADIO_TASK_START here. 
-  // staying in TXIDLE is what generates the unmodulated carrier wave.
+  // Sitting in TXIDLE is what generates the continuous unmodulated wave!
 
-  // trap the cpu here so it just keeps broadcasting
+  // Trap the cpu here so it just keeps broadcasting and flashing the LED
   while (1) {
     for(int i=0; i<4000000; i++) {
       __asm__("nop");
@@ -683,7 +683,7 @@ void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   }
 
 
-  init_radio_tx_test();
+  // init_radio_tx_test();
   
   blast_carrier();
 
