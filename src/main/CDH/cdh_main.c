@@ -38,15 +38,12 @@ int main(void) {
   clear_rx_cmd_buff(&rx_cmd_buff);
 
   // safe to enable rf frontend now
-  com_enable_rf(&rx_cmd_buff, &tx_cmd_buff);
-  gpio_clear(GPIOB, LED1);
-  gpio_clear(GPIOB,LED2);
+  // com_enable_rf(&rx_cmd_buff, &tx_cmd_buff);
+
+  com_start_demo(&rx_cmd_buff, &tx_cmd_buff);
+
   // UART Control Loop //
   while(1) {
-    //       for(int i=0; i<2000000; i++) { 
-    //   __asm__("nop");
-    // }
-    gpio_toggle(GPIOB,LED1);
     rx_usart1(&rx_cmd_buff);           // Collect command bytes
     reply(&rx_cmd_buff, &tx_cmd_buff); // Command reply logic
     tx_usart1(&tx_cmd_buff);           // Send a response if any

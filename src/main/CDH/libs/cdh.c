@@ -371,7 +371,10 @@ void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
-
+void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  uint8_t my_payload[] = {VAR_CODE_RUN_DEMO, 0x01, VAR_ENABLE};
+  msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
 
 
 // Bootloader opcode functions: I don't see us using these but left in for clarity - Jack

@@ -83,6 +83,7 @@ void power_off_com(void);
 void power_on_pay(void);
 void power_off_pay(void);
 void cdh_blink_demo(void);
+void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 // ========== UART Commands to COM ========== //
 void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);

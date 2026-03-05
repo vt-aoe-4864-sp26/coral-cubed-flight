@@ -41,12 +41,66 @@
 // SRAM1 size
 #define SRAM1_SIZE ((uint32_t)0x00020000U)
 
-// CCA/CRC Control for IEEE packet clearing
+// ========== RADIO Commands Not Def'd by LibOpen
+
+#define RADIO_SHORTS_READY_START             (1 << 0)
+#define RADIO_SHORTS_END_DISABLE             (1 << 1)
+#define RADIO_SHORTS_DISABLED_TXEN           (1 << 2)
+#define RADIO_SHORTS_DISABLED_RXEN           (1 << 3)
+#define RADIO_SHORTS_ADDRESS_RSSISTART       (1 << 4)
+#define RADIO_SHORTS_END_START               (1 << 5)
+#define RADIO_SHORTS_ADDRESS_BCSTART         (1 << 6)
+#define RADIO_SHORTS_DISABLED_RSSISTOP       (1 << 8)
+#define RADIO_SHORTS_RXREADY_CCASTART        (1 << 11)
+#define RADIO_SHORTS_CCAIDLE_TXEN            (1 << 12)
+#define RADIO_SHORTS_CCABUSY_DISABLE         (1 << 13)
+#define RADIO_SHORTS_FRAMESTART_BCSTART      (1 << 14)
+#define RADIO_SHORTS_CCAIDLE_STOP            (1 << 17)
+#define RADIO_SHORTS_TXREADY_START           (1 << 18)
+#define RADIO_SHORTS_RXREADY_START           (1 << 19)
+#define RADIO_SHORTS_PHYEND_DISABLE          (1 << 20)
+
 #define RADIO_CCACTRL                MMIO32(RADIO_BASE + 0x66C)
 #define RADIO_RXADDRESS              MMIO32(RADIO_BASE + 0x530)
 #define RADIO_CRCSTATUS              MMIO32(RADIO_BASE + 0x400)
 #define RADIO_EDSAMPLE               MMIO32(RADIO_BASE + 0x668)
 #define RADIO_EDCNT                  MMIO32(RADIO_BASE + 0x664)
+
+// Radio EVENTS and TASKS 
+#define RADIO_EVENT_READY            MMIO32(RADIO_BASE + 0x100)
+#define RADIO_EVENT_ADDRESS          MMIO32(RADIO_BASE + 0x104)
+#define RADIO_EVENT_PAYLOAD          MMIO32(RADIO_BASE + 0x108)
+#define RADIO_EVENT_END              MMIO32(RADIO_BASE + 0x10C)
+#define RADIO_EVENT_DISABLED         MMIO32(RADIO_BASE + 0x110)
+#define RADIO_EVENT_DEVMATCH         MMIO32(RADIO_BASE + 0x114)
+#define RADIO_EVENT_DEVMISS          MMIO32(RADIO_BASE + 0x118)
+#define RADIO_EVENT_RSSIEND          MMIO32(RADIO_BASE + 0x11C)
+#define RADIO_EVENT_FRAMESTART       MMIO32(RADIO_BASE + 0x138)
+#define RADIO_EVENT_EDEND            MMIO32(RADIO_BASE + 0x13C)
+#define RADIO_EVENT_CCAIDLE          MMIO32(RADIO_BASE + 0x144)
+#define RADIO_EVENT_CCABUSY          MMIO32(RADIO_BASE + 0x148)
+#define RADIO_EVENT_TXREADY          MMIO32(RADIO_BASE + 0x154)
+#define RADIO_EVENT_RXREADY          MMIO32(RADIO_BASE + 0x158)
+#define RADIO_EVENT_PHYEND           MMIO32(RADIO_BASE + 0x16C)
+#define RADIO_EVENT_BCMATCH          MMIO32(RADIO_BASE + 0x128)
+#define RADIO_EVENT_CRCOK            MMIO32(RADIO_BASE + 0x130)
+#define RADIO_EVENT_CRCERROR         MMIO32(RADIO_BASE + 0x134)
+
+#define RADIO_TASK_TXEN              MMIO32(RADIO_BASE + 0x000)
+#define RADIO_TASK_RXEN              MMIO32(RADIO_BASE + 0x004)
+#define RADIO_TASK_START             MMIO32(RADIO_BASE + 0x008)
+#define RADIO_TASK_STOP              MMIO32(RADIO_BASE + 0x00C)
+#define RADIO_TASK_DISABLE           MMIO32(RADIO_BASE + 0x010)
+#define RADIO_TASK_RSSISTART         MMIO32(RADIO_BASE + 0x014)
+#define RADIO_TASK_RSSISTOP          MMIO32(RADIO_BASE + 0x018)
+#define RADIO_TASK_BCSTART           MMIO32(RADIO_BASE + 0x01C)
+#define RADIO_TASK_BCSTOP            MMIO32(RADIO_BASE + 0x020)
+#define RADIO_TASK_EDSTART           MMIO32(RADIO_BASE + 0x024)
+#define RADIO_TASK_EDSTOP            MMIO32(RADIO_BASE + 0x028)
+#define RADIO_TASK_CCASTART          MMIO32(RADIO_BASE + 0x02C)
+
+
+
 
 
 
@@ -111,6 +165,7 @@ void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o);
 
 // ========== Utility functions  ========== //
 
+void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void flash_erase_page(uint32_t page);
 int handle_bootloader_erase(void);
 int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff);
@@ -119,4 +174,4 @@ int handle_bootloader_jump(void);
 int bootloader_active(void);
 void radio_set_rx_address(uint8_t addr_index);
 
-#endif.
+#endif

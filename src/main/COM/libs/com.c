@@ -27,6 +27,8 @@
 #define NVMC_READY MMIO32     (NVMC_BASE + 0x400)
 #define NVMC_READY_BUSY       (0     )
 
+// Energy Detection
+#define ED_RSSISCALE 4
 
 // ========== TAB Handling ========== //
 
@@ -106,6 +108,10 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       }
       break;
 
+      case VAR_CODE_RUN_DEMO:
+        run_demo(rx_cmd_buff, tx_cmd_buff);
+        return 1;
+
     case VAR_CODE_RF_TX: 
       enable_tx();
       return 1;
@@ -176,35 +182,38 @@ void init_gpio(void) {
 
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
+    gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO15); // RF CSN
 }
 
 
 void init_radio(void) {
-  radio_enable();
-  RADIO_MODE = 15; // ieee standard
+radio_enable();
 
-  radio_set_datawhiteiv(0);
-  radio_enable_whitening();
+	RADIO_MODE = 15; //ieee
 
-  radio_set_balen(4);
-  radio_set_maxlen(64);
-  radio_set_frequency(40);  // 2440 mhz
-  radio_set_crclen(2);      // enable crc
+	radio_enable_whitening();
+	radio_set_datawhiteiv(0);
 
-  RADIO_CRCPOLY = 0X11021;
-  RADIO_CRCINIT = 0;
-  RADIO_CRCCNF |= (2 << 8); // skip address and start crc after len byte
+	radio_set_balen(4);
+	radio_set_maxlen(64);
+	radio_set_frequency(10);  // 2410 MHz
+	radio_set_crclen(2);      // Enable CRC
 
-  radio_configure_packet(8,0,0);
+	RADIO_CRCPOLY = 0X11021;
+	RADIO_CRCINIT = 0;
+	RADIO_CRCCNF |= (2 << 8); // Skip address and start crc after len byte as per IEEE 802.15.4
 
-  radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
-  radio_set_tx_address(0);
-  radio_set_rx_address(0);
+	radio_configure_packet(8,0,0);
 
-  radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
-  RADIO_CCACTRL = 1;  // cca mode to carrier
+	radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
+	radio_set_tx_address(0);
+	radio_set_rx_address(0);
+
+	radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
+	RADIO_CCACTRL = 1;	// CCA Mode to Carrier mode -- needed for IEEE
+	
+
 }
-
 
 // ========== UART Communication functions ========== //
 
@@ -351,7 +360,291 @@ void blast_carrier(void) {
     gpio_toggle(P0, LED2);
   }
 }
+
+uint8_t sample_ed(void){
+    int val;
+    RADIO_EDCNT = 100; // set count
+    RADIO_TASK_EDSTART = 1; // Start
+    
+    while (RADIO_EVENT_EDEND != 1) {
+        __asm__("nop");
+    }
+    
+    RADIO_TASK_EDSTART = 0; // set back to 0
+    RADIO_EVENT_EDEND = 0; // set back to 0
+    
+    val = RADIO_EDSAMPLE * ED_RSSISCALE; // Read level
+    return (uint8_t)(val>255 ? 255 : val); // Convert to IEEE 802.15.4 scale
+}
+
+void radio_set_rx_address(uint8_t addr_index)
+{
+    RADIO_RXADDRESSES |= (1 << addr_index);
+}
+
+
+void tx_cmd_buff_config(tx_cmd_buff_t* buff, uint8_t msg_id) {
+    clear_tx_cmd_buff(buff);
+
+    buff->data[START_BYTE_0_INDEX] = (uint8_t)0x22;
+    buff->data[START_BYTE_1_INDEX] = (uint8_t)0x69;
+    buff->data[MSG_LEN_INDEX] = (uint8_t)0x16;
+    buff->data[HWID_LSB_INDEX] = (uint8_t)0xaf;
+    buff->data[HWID_MSB_INDEX] = (uint8_t)0xbe;
+    buff->data[MSG_ID_LSB_INDEX] = msg_id;
+    buff->data[MSG_ID_MSB_INDEX] = (uint8_t)0x00;
+    buff->data[ROUTE_INDEX] = (uint8_t)0x10;
+    buff->data[OPCODE_INDEX] = (uint8_t)0x16;
+    buff->end_index = buff->data[MSG_LEN_INDEX] + (uint8_t)0x03;
+    buff->empty = 0;
+}
+void tx_radio(uint8_t* pckt, size_t length) {
+	
+	// Radio state variable
+	uint8_t temp_radio_state;
+
+	// Tab initialization e
+	tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
+	clear_tx_cmd_buff(&tx_cmd_buff);
+
+	gpio_set(P0, GPIO2); // enable front rx
+	
+	radio_set_packet_ptr(pckt); // point to packet that we made
+
+	if (length > 125) {
+	// IEEE 802.15.4 packets have a maximum payload size of 127 bytes (125 b/c crc uses 2 playload bytes)
+	return;
+	}
+
+	radio_enable_rx(); // TASK_RXEN = 1
+	
+	// RXEN -> RXRU -> RXIDLE
+	while(RADIO_STATE != 1){ // Pass when not in RXRU
+		__asm__("nop");
+	}
+	while (RADIO_EVENT_RXREADY == 0){
+		__asm__("nop");
+	}
+
+	RADIO_EVENT_RXREADY = 0; // Reset
+
+	while(RADIO_STATE != 2){ // Pass when not in RXIDLE
+		__asm__("nop");
+	}
+
+	// RXIDLE -> RX
+	RADIO_TASK_CCASTART = 1;
+	temp_radio_state = RADIO_STATE;
+
+	int i = 0;
+	while(temp_radio_state != 3){ // Pass when not in RX
+		temp_radio_state = RADIO_STATE;
+		__asm__("nop");
+		i++;
+		if ( i>= 1000){
+			break;
+		}
+	}
+	
+	while (RADIO_EVENT_CCAIDLE == 0){
+		__asm__("nop");
+	}
+	
+	//Transmit
+	// TXEN -> TXRU
+
+	RADIO_EVENT_CCAIDLE = 0;
+	RADIO_TASK_TXEN = 1;
+
+	while(RADIO_STATE != 9){ // Pass when not in TXRU
+		__asm__("nop");
+	}
+
+	while(RADIO_STATE != 10){ // Pass when not TXIDLE
+		__asm__("nop");
+	}
+
+	//TX_READY -> START
+	while (RADIO_EVENT_TXREADY == 0) {
+		__asm__("nop");
+	}
+	
+	RADIO_TASK_START = 1;
+	RADIO_EVENT_TXREADY = 0;
+
+	// START
+	RADIO_TASK_START = 1; // start radio
+	RADIO_EVENT_TXREADY = 0; // set back to zero.
+
+	//TXIDLE -> TX
+	while(RADIO_STATE!=11){ // Pass when not in TX
+		__asm__("nop");
+	}
+	
+	while (RADIO_EVENT_FRAMESTART == 0) {
+		__asm__("nop");
+	}
+	
+	// wait until radio is done TX
+	// last bit sent
+	while (RADIO_EVENT_PHYEND == 0) {
+		__asm__("nop");
+	}
+	
+	while (RADIO_EVENT_END == 0){
+		__asm__("nop");
+	}
+
+	RADIO_EVENT_FRAMESTART = 0; // set back to 0
+	
+	//TX -> TXIDLE
+	while(RADIO_STATE!=10){ // Pass when not in TXIDLE
+		__asm__("nop");
+	}
+	
+	RADIO_EVENT_PHYEND = 0; // set back to 0
+	RADIO_EVENT_END = 0; // set back to 0
+	RADIO_TASK_DISABLE = 1; // disable radio
+	
+	// TXIDLE -> DISABLE
+	while (RADIO_EVENT_DISABLED == 0) {
+		__asm__("nop");
+	}
+	RADIO_EVENT_DISABLED = 0; // set back to 0
+	
+	gpio_clear(P0, GPIO3); // disable front tx
+}
+
+//RADIO RX
+//Receive - pg. 508
+void rx_radio(uint8_t* pckt, size_t length) {
+	
+	// Figure 112 pg 508 IEEE RX sequence
+	// Init temp radio state variable
+	uint8_t temp_radio_state;
+	
+	// TAB Initialization
+	tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
+	clear_tx_cmd_buff(&tx_cmd_buff);
+	
+	gpio_set(P0, GPIO2); // enable front rx
+	
+	radio_set_packet_ptr(pckt); // point to packet that we made
+	
+	if (length > 125) {
+	// IEEE 802.15.4 packets have a maximum payload size of 127 bytes (125 b/c crc uses 2 playload bytes)
+	return;
+	}
+
+	radio_enable_rx(); // TASK_RXEN = 1
+	
+	// RXEN -> RXRU -> RXIDLE
+	while(RADIO_STATE != 1){ // Pass when not in RXRU
+		__asm__("nop");
+	}
+	
+	while (RADIO_EVENT_RXREADY == 0){
+		__asm__("nop");
+	}
+
+	RADIO_EVENT_RXREADY = 0; // Reset
+
+	while(RADIO_STATE != 2){ // Pass when not in RXIDLE
+		__asm__("nop");
+	}
+
+	RADIO_TASK_START = 1; // start START
+	temp_radio_state = RADIO_STATE; // RX
+	
+	int i = 0;
+	while(temp_radio_state != 3){ // Pass when not in RX
+		temp_radio_state = RADIO_STATE;
+		__asm__("nop");
+	}
+
+	// FRAMESTART
+	while(RADIO_EVENT_FRAMESTART == 9){
+		__asm__("nop");
+	}
+
+	// Sample the energy detect level
+	uint8_t energy_level = sample_ed();
+	pckt[11] = energy_level;
+	
+	// packet recieved
+	while (RADIO_EVENT_END == 0) {
+		__asm__("nop");
+	}
+
+	// Packet fully received --> flash LED
+	blink_led(GPIO30, 3);
+	
+	while(RADIO_STATE!=2){ // while RADIO_STATE not RXIDLE
+		__asm__("nop");
+	}
+	
+	// RXIDLE -> DISABLE
+	RADIO_EVENT_FRAMESTART = 0; // set back to 0
+	RADIO_EVENT_PHYEND = 0; // set back to 0
+	RADIO_EVENT_END = 0; // set back to 0
+	RADIO_TASK_DISABLE = 1; // disable radio
+	
+	while(RADIO_STATE!=0){ // while RADIO_STATE not DISABLED
+		__asm__("nop");
+	}
+	
+	while (RADIO_EVENT_DISABLED == 0) {
+		__asm__("nop");
+	}
+	
+	RADIO_EVENT_DISABLED = 0; // set back to 0
+	
+	gpio_clear(P0, GPIO2); // disable front rx
+	
+	pckt[15] = (uint8_t)RADIO_CRCSTATUS; 
+}
+
+
 // ========== Utility functions ========== //
+
+void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+
+  com_blink_demo();
+
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+  
+  cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
+
+  enable_rf();
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+
+  enable_rx();
+
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+
+  enable_tx();
+
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+
+  cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
+  
+  for(int i=0; i<48000000; i++) { 
+  __asm__("nop");
+  }
+
+}
 
 void flash_erase_page(uint32_t page) {
   // Enable erase
