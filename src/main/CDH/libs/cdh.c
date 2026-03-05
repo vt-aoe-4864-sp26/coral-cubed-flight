@@ -289,7 +289,7 @@ void power_off_pay(){
 }
 
 void cdh_blink_demo(void){
-    // blink for 15 seconds (slow)
+  // blink for 15 seconds (slow)
   for(int k = 0; k < 20; k++) {
     for(int i = 0; i < 4000000; i++) {
       __asm__("nop");

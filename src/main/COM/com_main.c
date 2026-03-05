@@ -19,6 +19,7 @@ int main(void) {
   init_uart();
   init_clock();
   init_gpio();
+  init_radio();
 
 
   // init_radio();

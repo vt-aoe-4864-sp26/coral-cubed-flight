@@ -101,9 +101,6 @@
 
 
 
-
-
-
 // ========== UART common_data handles ========== //
 #define VAR_CODE_ALIVE               ((uint8_t)0x00)
 #define VAR_CODE_COM_EN             ((uint8_t)0x01)
@@ -155,6 +152,14 @@ void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_blink_demo(void);
 void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+
+// ========== RADIO ========== //
+
+uint8_t sample_ed(void);
+void tx_cmd_buff_config(tx_cmd_buff_t* buff, uint8_t msg_id);
+void tx_radio(uint8_t* pckt, size_t length);
+void rx_radio(uint8_t* pckt, size_t length);
+void test_tx(void);
 
 
 // ========== General UART ========== //

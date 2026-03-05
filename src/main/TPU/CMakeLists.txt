@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 # Toolchain must be set before project() call.
 if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE ${SOURCE_DIR}/coralmicro/cmake/toolchain-arm-none-eabi-gcc.cmake)
+    set(CMAKE_TOOLCHAIN_FILE ${SOURCE_DIR}/../third-party/coralmicro/cmake/toolchain-arm-none-eabi-gcc.cmake)
 endif()
 
 project(coralmicro-app)

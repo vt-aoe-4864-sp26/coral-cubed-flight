@@ -187,7 +187,7 @@ void init_gpio(void) {
 
 
 void init_radio(void) {
-radio_enable();
+  radio_enable();
 
 	RADIO_MODE = 15; //ieee
 
@@ -318,7 +318,7 @@ void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 
 void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   // send msg to cdh for it to blink
-  uint8_t my_payload[] = {VAR_CODE_BLINK_CDH, 0x01, VAR_DISABLE};
+  uint8_t my_payload[] = {VAR_CODE_BLINK_CDH, 0x01, VAR_ENABLE};
   msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
@@ -327,8 +327,8 @@ uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 
 void init_radio_tx_test(void) {
   RADIO_MODE = 0; 
-  RADIO_FREQUENCY = 40; 
-  RADIO_TXPOWER = 0; 
+  RADIO_FREQUENCY = 10; 
+  RADIO_TXPOWER = 4;
   RADIO_PCNF0 = (0 << 16) | (1 << 8) | (8 << 0);
   RADIO_PCNF1 = (255 << 16) | (255 << 8) | (4 << 0);
   RADIO_BASE0 = 0x01234567;
@@ -338,20 +338,27 @@ void init_radio_tx_test(void) {
 }
 
 void blast_carrier(void) {
-  // turn on the external rf frontend first
-  enable_rf();
-  enable_tx();
+  // clear any shorts that might auto-start the radio past TXIDLE
+  RADIO_SHORTS = 0;
 
-  // tell the nrf radio to ramp up for transmit
+  // force the radio to a known DISABLED state. 
+  // if we don't do this, TXEN is ignored!
+  if (RADIO_STATE != 0) { 
+    RADIO_TASK_DISABLE = 1;
+    while (RADIO_STATE != 0) {} 
+  }
+
+
+  RADIO_EVENT_READY = 0;
   RADIO_TASK_TXEN = 1;
 
-  // wait for the radio state machine to report it is ready
+  // wait for it to reach TXIDLE 
   while (RADIO_EVENT_READY == 0) {}
   RADIO_EVENT_READY = 0;
 
-  // do not trigger radio_task_start or radio_task_disable.
-  // staying in the txidle state forces an unmodulated carrier wave.
-  
+  // DO NOT add RADIO_TASK_START here. 
+  // staying in TXIDLE is what generates the unmodulated carrier wave.
+
   // trap the cpu here so it just keeps broadcasting
   while (1) {
     for(int i=0; i<4000000; i++) {
@@ -381,7 +388,6 @@ void radio_set_rx_address(uint8_t addr_index)
 {
     RADIO_RXADDRESSES |= (1 << addr_index);
 }
-
 
 void tx_cmd_buff_config(tx_cmd_buff_t* buff, uint8_t msg_id) {
     clear_tx_cmd_buff(buff);
@@ -446,9 +452,9 @@ void tx_radio(uint8_t* pckt, size_t length) {
 		}
 	}
 	
-	while (RADIO_EVENT_CCAIDLE == 0){
-		__asm__("nop");
-	}
+	// while (RADIO_EVENT_CCAIDLE == 0){ // checks if noise floor is too high
+	// 	__asm__("nop");
+	// }
 	
 	//Transmit
 	// TXEN -> TXRU
@@ -576,8 +582,7 @@ void rx_radio(uint8_t* pckt, size_t length) {
 		__asm__("nop");
 	}
 
-	// Packet fully received --> flash LED
-	blink_led(GPIO30, 3);
+	
 	
 	while(RADIO_STATE!=2){ // while RADIO_STATE not RXIDLE
 		__asm__("nop");
@@ -604,6 +609,23 @@ void rx_radio(uint8_t* pckt, size_t length) {
 	pckt[15] = (uint8_t)RADIO_CRCSTATUS; 
 }
 
+void test_tx(void) {
+  // dummy packet. the first byte usually needs to be the length for the radio 
+  uint8_t test_packet[16] = {15, 0xde, 0xad, 0xbe, 0xef};
+
+  // trap the processor here and blast packets
+  while(1) {
+    tx_radio(test_packet, 16);
+    
+    // tiny delay so the radio state machine can breathe
+    for(int i=0; i<100000; i++) { 
+      __asm__("nop");
+    }
+    
+    // toggle an led so you can visually see the packets flying
+    gpio_toggle(P0, LED2);
+  }
+}
 
 // ========== Utility functions ========== //
 
@@ -619,7 +641,15 @@ void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   __asm__("nop");
   }
   
+  // build the cdh blink message
   cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
+  // actually transmit it over the wire!
+  tx_uart(tx_cmd_buff);
+
+  // wait a tiny bit and clear out the ack cdh sends back so we don't overflow
+  for(int i=0; i<100000; i++) { __asm__("nop"); }
+  rx_uart(rx_cmd_buff);
+  clear_rx_cmd_buff(rx_cmd_buff);
 
   enable_rf();
   for(int i=0; i<48000000; i++) { 
@@ -638,11 +668,24 @@ void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   __asm__("nop");
   }
 
+  // build the payload enable message
   cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
+  // actually transmit it!
+  tx_uart(tx_cmd_buff);
+
+  // catch and clear the ack
+  for(int i=0; i<100000; i++) { __asm__("nop"); }
+  rx_uart(rx_cmd_buff);
+  clear_rx_cmd_buff(rx_cmd_buff);
   
   for(int i=0; i<48000000; i++) { 
   __asm__("nop");
   }
+
+
+  init_radio_tx_test();
+  
+  blast_carrier();
 
 }
 
@@ -660,10 +703,7 @@ void flash_erase_page(uint32_t page) {
   __asm__("isb 0xF");
   __asm__("dsb 0xF");
 }
-void radio_set_rx_address(uint8_t addr_index)
-{
-    RADIO_RXADDRESSES |= (1 << addr_index);
-}
+
 
 
 // ========== Example Bootloader Functions ========== //
