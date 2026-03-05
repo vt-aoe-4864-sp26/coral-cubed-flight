@@ -67,14 +67,12 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       break;
 
     case VAR_CODE_PAY_EN:
-      // val_ptr=1 drives ic high on eps to enable power to pay pcb
       switch(*val_ptr){ 
-        
-        case VAR_ENABLE: // told to power on pay
+        case VAR_ENABLE: 
           power_on_pay();
           return 1;
 
-        case VAR_DISABLE: // told to power off pay
+        case VAR_DISABLE: 
           power_off_pay();
           return 1;
 
@@ -88,6 +86,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       switch(*val_ptr){ 
           
         case VAR_ENABLE: {
+          
           com_enable_rf(rx_cmd_buff, tx_cmd_buff);
           return 1;
         }
@@ -133,6 +132,20 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
         return 0;
     }
 
+    case VAR_CODE_BLINK_CDH:
+    switch(*val_ptr){
+
+      case VAR_ENABLE: {
+          cdh_blink_demo();
+          return 1;
+        }
+
+        case VAR_DISABLE: {
+          
+          return 1;
+        }
+    }
+
     case VAR_CODE_CORAL_WAKE:
       break;
 
@@ -143,14 +156,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       break;
 
     default:
-      // make the LEDs go crazy if the payload is meaningless
-      while(1) {
-        for(int i=0; i<4000000; i++) {
-          __asm__("nop");
-        }
-        gpio_toggle(GPIOB, GPIO2);
-        gpio_toggle(GPIOB, GPIO1);
-      }
+      return 0;
     }
       return 0;
 }
@@ -282,6 +288,27 @@ void power_off_pay(){
   gpio_clear(GPIOC, PAY_EN_PIN); // power off PAY
 }
 
+void cdh_blink_demo(void){
+    // blink for 15 seconds (slow)
+  for(int k = 0; k < 20; k++) {
+    for(int i = 0; i < 4000000; i++) {
+      __asm__("nop");
+    }
+    gpio_toggle(GPIOB, LED1);
+    gpio_toggle(GPIOB, LED2);
+  }
+
+  // faster blink for 15 seconds (fast)
+  for(int k = 0; k < 20; k++) {
+    for(int i = 0; i < 2000000; i++) {
+      __asm__("nop");
+    }
+    gpio_toggle(GPIOB, LED1);
+    gpio_toggle(GPIOB, LED2);
+  }  
+}
+
+
 // ========== UART Commands to COM ========== //
 
 void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
@@ -343,6 +370,8 @@ void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_RF_TX, 0x01, VAR_DISABLE};
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
+
+
 
 
 // Bootloader opcode functions: I don't see us using these but left in for clarity - Jack

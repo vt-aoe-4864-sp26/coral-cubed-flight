@@ -49,9 +49,8 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 
   switch(var_code) {
     case VAR_CODE_ALIVE:
-    switch(*val_ptr){ 
+      switch(*val_ptr){ 
         case 0x01:
-          send_alive(rx_cmd_buff, tx_cmd_buff);
           return 1;
 
         default:
@@ -124,19 +123,15 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
     case VAR_CODE_CORAL_INFER:
       break;
 
-    case VAR_CODE_BLINK_DEMO:
+    case VAR_CODE_BLINK_COM:
       com_blink_demo();
+      return 1;
+    case VAR_CODE_BLINK_CDH:
+      cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
       return 1;
     
     default:
-      // make the LEDs go crazy if the payload is meaningless
-      while(1) {
-        for(int i=0; i<4000000; i++) {
-          __asm__("nop");
-        }
-        gpio_toggle(P0, LED1);
-        gpio_toggle(P0, LED2);
-      }
+      return 0;
     }
       return 0;
 }
@@ -298,11 +293,10 @@ void com_blink_demo(void) {
     }
   }
 
+
 // ========== UART Messages to CDH ========== //
 
-void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
-  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_ACK_OPCODE, NULL, 3);
-}
+
 
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_ENABLE};
@@ -310,9 +304,14 @@ void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 }
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   uint8_t my_payload[] = {VAR_CODE_PAY_EN, 0x01, VAR_DISABLE};
-  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 0);
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
+void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+  // send msg to cdh for it to blink
+  uint8_t my_payload[] = {VAR_CODE_BLINK_CDH, 0x01, VAR_DISABLE};
+  msg_to_cdh(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
 
 // ========== Radio Functions ========== //
 uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};

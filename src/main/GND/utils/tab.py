@@ -250,7 +250,7 @@ def bootloader_ack_reason_to_str(bootloader_ack_reason):
 def route_to_str(route,node):
   # isolate the route nibble
   nibble = (route>>0) & 0x0f
-  if node==Route.SRC:
+  if node==Route.DST:
     nibble = (route>>4) & 0x0f
   # return the corresponding string
   if nibble==GND:
@@ -349,7 +349,7 @@ class TxCmd:
     self.data[HWID_MSB_INDEX]     = (hw_id  >> 8) & 0xff
     self.data[MSG_ID_LSB_INDEX]   = (msg_id >> 0) & 0xff
     self.data[MSG_ID_MSB_INDEX]   = (msg_id >> 8) & 0xff
-    self.data[ROUTE_INDEX]        = (src << 4) | (dst << 0)
+    self.data[ROUTE_INDEX]        = (dst << 4) | (src << 0)
     self.data[OPCODE_INDEX]       = opcode
     # set opcode-specific bytes
     if self.data[OPCODE_INDEX] == COMMON_ACK_OPCODE:

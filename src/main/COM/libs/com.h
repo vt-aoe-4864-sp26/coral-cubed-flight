@@ -51,24 +51,28 @@
 
 
 // ========== UART common_data handles ========== //
-#define VAR_CODE_ALIVE          ((uint8_t)0x00)
-#define VAR_CODE_COM_EN         ((uint8_t)0x01)
-#define VAR_CODE_PAY_EN         ((uint8_t)0x02)
+#define VAR_CODE_ALIVE               ((uint8_t)0x00)
+#define VAR_CODE_COM_EN             ((uint8_t)0x01)
+#define VAR_CODE_PAY_EN             ((uint8_t)0x02)
 
 // ========== COM Commands
-#define VAR_CODE_RF_EN          ((uint8_t)0x03)
-#define VAR_CODE_RF_TX          ((uint8_t)0x04)
-#define VAR_CODE_RF_RX          ((uint8_t)0x05)
-#define VAR_CODE_BLINK_DEMO     ((uint8_t)0x06)
+#define VAR_CODE_RF_EN              ((uint8_t)0x03)
+#define VAR_CODE_RF_TX              ((uint8_t)0x04)
+#define VAR_CODE_RF_RX              ((uint8_t)0x05)
+#define VAR_CODE_BLINK_CDH         ((uint8_t)0x06)
+#define VAR_CODE_BLINK_COM         ((uint8_t)0x07)
 
 // ========== Payload Commands
-#define VAR_CODE_CORAL_WAKE     ((uint8_t)0x07)
-#define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x08)
-#define VAR_CODE_CORAL_INFER    ((uint8_t)0x09)
+#define VAR_CODE_CORAL_WAKE      ((uint8_t)0x08)
+#define VAR_CODE_CORAL_CAM_ON    ((uint8_t)0x09)
+#define VAR_CODE_CORAL_INFER      ((uint8_t)0x0a)
+
+// ========== Testing & Debug
+#define VAR_CODE_RUN_DEMO       ((uint8_t)0x0b)
 
 // ========== Common_Data_Vars
-#define VAR_ENABLE              ((uint8_t)0x01)
-#define VAR_DISABLE             ((uint8_t)0x02)
+#define VAR_ENABLE                 ((uint8_t)0x01)
+#define VAR_DISABLE                ((uint8_t)0x02)
 
 // ========== Functions Required by TAB/OpenLST Protocols ========== // 
 
@@ -85,7 +89,7 @@ void init_radio(void);
 
 // ========== COM Functions ========== //
 
-void send_alive(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+
 void init_radio_tx_test(void);
 void blast_noise(void);
 void blast_carrier(void);
@@ -96,6 +100,7 @@ void enable_tx(void);
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_blink_demo(void);
+void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 
 // ========== General UART ========== //
@@ -114,4 +119,4 @@ int handle_bootloader_jump(void);
 int bootloader_active(void);
 void radio_set_rx_address(uint8_t addr_index);
 
-#endif
+#endif.

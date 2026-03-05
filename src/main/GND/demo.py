@@ -27,43 +27,61 @@ class PCB:
 
     def _wait_for_serial(self, timeout=30):
         if not self.dev:
-            raise ValueError("Serial port is not provided or is None.")
+            raise ValueError("serial port is not provided or is none.")
         
-        print(f"Waiting for serial device at {self.dev}...")
+        print(f"waiting for serial device at {self.dev}...")
         start = time.time()
         while time.time() - start < timeout:
             if pathlib.Path(self.dev).exists():
                 self.serial_port = serial.Serial(port=self.dev, baudrate=self.BAUD)
-                print("Serial Connection Established to PCB\n")
+                print("serial connection established to pcb\n")
                 return True
             time.sleep(0.5)
-        raise TimeoutError(f"Serial port {self.dev} not found within {timeout}s")
+        raise TimeoutError(f"serial port {self.dev} not found within {timeout}s")
     
-    def _send_and_wait(self, cmd):
-        """Helper to handle the repetitive TX/RX loop for all commands."""
-        byte_i = 0
-        while self.rx_cmd_buff.state != RxCmdBuffState.COMPLETE:
-            # Transmit
-            if byte_i < cmd.get_byte_count():
-                self.serial_port.write(cmd.data[byte_i].to_bytes(1, byteorder='big'))
-                byte_i += 1
+    def _send_and_wait(self, cmd, timeout=5.0, retries=3):
+        """helper to handle the repetitive tx/rx loop for all commands."""
+        for attempt in range(retries):
+            byte_i = 0
+            start_time = time.time()
+            self.rx_cmd_buff.clear()
             
-            # Receive
-            if self.serial_port.in_waiting > 0:
-                bytes_read = self.serial_port.read(1)
-                for b in bytes_read:
-                    self.rx_cmd_buff.append_byte(b)
+            while self.rx_cmd_buff.state != RxCmdBuffState.COMPLETE:
+                # transmit
+                if byte_i < cmd.get_byte_count():
+                    self.serial_port.write(cmd.data[byte_i].to_bytes(1, byteorder='big'))
+                    byte_i += 1
+                
+                # receive
+                if self.serial_port.in_waiting > 0:
+                    bytes_read = self.serial_port.read(1)
+                    for b in bytes_read:
+                        self.rx_cmd_buff.append_byte(b)
+                else:
+                    time.sleep(0.001)
+
+                if time.time() - start_time > timeout:
+                    print(f"timeout waiting for reply on attempt {attempt + 1}/{retries}")
+                    break
                     
-        print('txcmd: ' + str(cmd))
-        print('reply: ' + str(self.rx_cmd_buff) + '\n')
-        
-        # Cleanup and increment for next message
+            if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
+                print('txcmd: ' + str(cmd))
+                print('reply: ' + str(self.rx_cmd_buff) + '\n')
+                
+                # cleanup and increment for next message
+                cmd.clear()
+                self.rx_cmd_buff.clear()
+                self.msgid += 1
+                time.sleep(1.0)
+                return True
+
+        print("failed to send command after all retries.\n")
         cmd.clear()
         self.rx_cmd_buff.clear()
         self.msgid += 1
-        time.sleep(1.0)
+        return False
 
-    # Opcodes
+    # opcodes
 
     def common_ack(self):
         cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, COM)
@@ -118,64 +136,106 @@ class PCB:
         cmd.common_data([0x00,0x01,0x01])
         self._send_and_wait(cmd)
         
-    def blink_demo(self):
+    def handshake(self):
+        print("initiating uart handshake...")
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([0x00,0x01,0x01]) # send alive
+        success = self._send_and_wait(cmd, timeout=2.0, retries=5)
+        if success:
+            print("uart handshake successful.\n")
+        else:
+            print("uart handshake failed. please check the connection to the com board.\n")
+            sys.exit(1)
+        
+
+
+    def cdh_enable_pay(self, var_code_pay_en=0x02, var_enable=0x01):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([var_code_pay_en, 0x01, var_enable])
+        self._send_and_wait(cmd)
+
+    def enable_rf(self, var_code_rf_en=0x03, var_enable=0x01):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([var_code_rf_en, 0x01, var_enable])
+        self._send_and_wait(cmd)
+
+    def enable_tx(self, var_code_rf_tx=0x04):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([var_code_rf_tx, 0x01, 0x01]) # val byte ignored by com.c
+        self._send_and_wait(cmd)
+
+    def enable_rx(self, var_code_rf_rx=0x05):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([var_code_rf_rx, 0x01, 0x01]) # val byte ignored by com.c
+        self._send_and_wait(cmd)
+
+    def cdh_blink_demo(self, var_code_blink_cdh = 0x06):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
         cmd.common_data([0x06, 0x01, 0x01])
         self._send_and_wait(cmd)
+    
+    def com_blink_demo(self, var_code_blink_cdh = 0x07):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd.common_data([0x07, 0x01, 0x01])
+        self._send_and_wait(cmd)
+
 
 
 if __name__ == '__main__':
-    # Parse script arguments
-    port = '/dev/ttyUSB0' # Default
+    # parse script arguments
+    port = '/dev/ttyUSB0' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
-        print('Usage: python3 demo.py [/path/to/dev]')
+        print('usage: python3 demo.py [/path/to/dev]')
         sys.exit(1)
 
-    print(f"Initializing PCB communication on {port}...")
+    print(f"initializing pcb communication on {port}...")
 
     board = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
 
     try:
-        # Wait for device and connect
+        # wait for device and connect
         board._wait_for_serial(timeout=10)
 
-        print("--- Commencing Tests ---")
+        print("--- commencing tests ---")
 
         print("alive")
-
-        board.send_alive()
-        print("--- Blinking ---") 
+        board.handshake()
+        print("--- blinking ---") 
         
-        # Test LEDs - COM
-        board.blink_demo()
-    
-        print("blinked")
+        # test leds - com
+        board.com_blink_demo()
+        print("blinked com")
+        time.sleep(15)
         
-        # Test Common Ack
-        board.common_ack()
-        
-        # Test Common Nack
-        board.common_nack()
+        board.cdh_blink_demo()
 
-        # Test Common Debug
-        board.common_debug('Hello, world!')
+        print("blinked cdh")
 
-        # Enable Payload
-        board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b])
+        # test common debug
+        board.common_debug('hello, world!')
 
-        # Enable COM RF Frontend
-        board.common_data([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x0a,0x09,0x0b])
+        print("--- testing routing to cdh & hardware enables ---")
 
-        # Enable COM RX
+        # enable payload
+        print("enabling payload (should route to cdh)...")
+        board.cdh_enable_pay()
 
-        # Enable COM TX
+        # enable com rf frontend
+        print("enabling rf frontend...")
+        board.enable_rf()
 
+        # enable com rx
+        print("enabling rx...")
+        board.enable_rx()
 
+        # enable com tx
+        print("enabling tx...")
+        board.enable_tx()
 
-        print("--- Testing Complete ---")
+        print("--- testing complete ---")
 
     except Exception as e:
-        print(f"Error during execution: {e}")
+        print(f"error during execution: {e}")
         sys.exit(1)
