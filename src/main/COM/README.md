@@ -21,14 +21,14 @@ A flashtool has been included for your convenience which will build the apps and
 Via Native x64 Linux:
 
 ```bash
-chmod +x setup.sh
+chmod +x flashtool.sh
 ./flashtool.sh
 ```
 
 Via WSL (after mounting the ST-Link SWD to your WSL)
 
 ```bash
-chmod +x setup.sh
-dos2unix setup.sh
+chmod +x flashtool.sh
+dos2unix flashtool.sh
 ./flashtool.sh
 ```
