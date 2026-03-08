@@ -21,6 +21,7 @@ int main(void) {
   init_gpio();
   init_radio();
 
+  //blast_carrier();
 
   // TAB initialization
   rx_cmd_buff_t rx_cmd_buff = {.size=CMD_MAX_LEN, .route_id=COM};

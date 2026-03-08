@@ -659,10 +659,10 @@ void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   for(int i=0; i<48000000; i++) { __asm__("nop"); }
 
   // Flush the RX pin just in case garbage is sitting there
-  uart_stop_rx(UART0);
+  //uart_stop_rx(UART0);
 
   // Re-initialize the radio exactly how it was at boot
-  init_radio();
+  //init_radio();
   
   // Blast it!
   blast_carrier();
