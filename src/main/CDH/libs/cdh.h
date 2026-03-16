@@ -29,11 +29,7 @@
 // ========== Start of application address space
 #define APP_ADDR   ((uint32_t)0x08008000U)
 
-// ========== SRAM1 start address
-#define SRAM1_BASE ((uint32_t)0x20000000U)
-
-// ========== SRAM1 size
-#define SRAM1_SIZE ((uint32_t)0x00040000U)
+// SRAM definitions removed for Zephyr compatibility
 
 
 // ========== UART common_data handles ========== //

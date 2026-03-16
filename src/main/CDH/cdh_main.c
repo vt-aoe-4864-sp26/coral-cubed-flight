@@ -9,7 +9,7 @@
 // Includes for standard libs, BSP, and common TAB command parsing
 #include <stddef.h> // size_t
 #include <stdint.h> // uint8_t, uint32_t
-#include <libopencm3/stm32/gpio.h>
+#include <zephyr/kernel.h>
 #include <cdh.h>    // CDH header
 #include <tab.h>    // TAB header
 

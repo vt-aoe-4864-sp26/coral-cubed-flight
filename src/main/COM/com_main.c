@@ -3,8 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <libopencm3/nrf/clock.h>
-#include <libopencm3/nrf/gpio.h>
+#include <zephyr/kernel.h>
 #include <com.h>
 
 

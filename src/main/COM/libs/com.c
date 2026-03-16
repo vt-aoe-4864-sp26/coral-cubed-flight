@@ -8,11 +8,10 @@
 
 // Standard library headers
 #include <stdint.h>                 // uint8_t
-#include <libopencm3/nrf/clock.h> 
-#include <libopencm3/nrf/gpio.h>
-#include <libopencm3/nrf/uart.h>
-#include <libopencm3/nrf/radio.h>    // used in init_radio
-#include <libopencm3/nrf/ppi.h>      // used in init_radio
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/uart.h>
+#include <hal/nrf_radio.h>
 #include <com.h>                    // COM header
 #include <tab.h>                    // TAB header
 
@@ -31,6 +30,63 @@
 #define ED_RSSISCALE 4
 
 // ========== TAB Handling ========== //
+
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+static const struct gpio_dt_spec tx_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(tx_en), gpios);
+static const struct gpio_dt_spec rx_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(rx_en), gpios);
+static const struct gpio_dt_spec rf_fe_pin = GPIO_DT_SPEC_GET(DT_ALIAS(rf_fe), gpios);
+const struct device *uart_dev = DEVICE_DT_GET(DT_NODELABEL(uart0));
+
+#define RADIO_BASE                   NRF_RADIO
+#define RADIO_CCACTRL                NRF_RADIO->CCACTRL
+#define RADIO_RXADDRESSES            NRF_RADIO->RXADDRESSES
+#define RADIO_CRCSTATUS              NRF_RADIO->CRCSTATUS
+#define RADIO_EDSAMPLE               NRF_RADIO->EDSAMPLE
+#define RADIO_EDCNT                  NRF_RADIO->EDCNT
+#define RADIO_EVENT_READY            NRF_RADIO->EVENTS_READY
+#define RADIO_EVENT_ADDRESS          NRF_RADIO->EVENTS_ADDRESS
+#define RADIO_EVENT_PAYLOAD          NRF_RADIO->EVENTS_PAYLOAD
+#define RADIO_EVENT_END              NRF_RADIO->EVENTS_END
+#define RADIO_EVENT_DISABLED         NRF_RADIO->EVENTS_DISABLED
+#define RADIO_EVENT_DEVMATCH         NRF_RADIO->EVENTS_DEVMATCH
+#define RADIO_EVENT_DEVMISS          NRF_RADIO->EVENTS_DEVMISS
+#define RADIO_EVENT_RSSIEND          NRF_RADIO->EVENTS_RSSIEND
+#define RADIO_EVENT_FRAMESTART       NRF_RADIO->EVENTS_FRAMESTART
+#define RADIO_EVENT_EDEND            NRF_RADIO->EVENTS_EDEND
+#define RADIO_EVENT_CCAIDLE          NRF_RADIO->EVENTS_CCAIDLE
+#define RADIO_EVENT_CCABUSY          NRF_RADIO->EVENTS_CCABUSY
+#define RADIO_EVENT_TXREADY          NRF_RADIO->EVENTS_TXREADY
+#define RADIO_EVENT_RXREADY          NRF_RADIO->EVENTS_RXREADY
+#define RADIO_EVENT_PHYEND           NRF_RADIO->EVENTS_PHYEND
+#define RADIO_EVENT_BCMATCH          NRF_RADIO->EVENTS_BCMATCH
+#define RADIO_EVENT_CRCOK            NRF_RADIO->EVENTS_CRCOK
+#define RADIO_EVENT_CRCERROR         NRF_RADIO->EVENTS_CRCERROR
+#define RADIO_TASK_TXEN              NRF_RADIO->TASKS_TXEN
+#define RADIO_TASK_RXEN              NRF_RADIO->TASKS_RXEN
+#define RADIO_TASK_START             NRF_RADIO->TASKS_START
+#define RADIO_TASK_STOP              NRF_RADIO->TASKS_STOP
+#define RADIO_TASK_DISABLE           NRF_RADIO->TASKS_DISABLE
+#define RADIO_TASK_RSSISTART         NRF_RADIO->TASKS_RSSISTART
+#define RADIO_TASK_RSSISTOP          NRF_RADIO->TASKS_RSSISTOP
+#define RADIO_TASK_BCSTART           NRF_RADIO->TASKS_BCSTART
+#define RADIO_TASK_BCSTOP            NRF_RADIO->TASKS_BCSTOP
+#define RADIO_TASK_EDSTART           NRF_RADIO->TASKS_EDSTART
+#define RADIO_TASK_EDSTOP            NRF_RADIO->TASKS_EDSTOP
+#define RADIO_TASK_CCASTART          NRF_RADIO->TASKS_CCASTART
+#define RADIO_MODE                   NRF_RADIO->MODE
+#define RADIO_FREQUENCY              NRF_RADIO->FREQUENCY
+#define RADIO_TXPOWER                NRF_RADIO->TXPOWER
+#define RADIO_PCNF0                  NRF_RADIO->PCNF0
+#define RADIO_PCNF1                  NRF_RADIO->PCNF1
+#define RADIO_BASE0                  NRF_RADIO->BASE0
+#define RADIO_PREFIX0                NRF_RADIO->PREFIX0
+#define RADIO_TXADDRESS              NRF_RADIO->TXADDRESS
+#define RADIO_CRCCNF                 NRF_RADIO->CRCCNF
+#define RADIO_CRCPOLY                NRF_RADIO->CRCPOLY
+#define RADIO_CRCINIT                NRF_RADIO->CRCINIT
+#define RADIO_SHORTS                 NRF_RADIO->SHORTS
+#define RADIO_STATE                  NRF_RADIO->STATE
 
 int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
   // need at least type and length bytes
@@ -145,86 +201,62 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 // ========== Board initialization functions ========== //
 
 void init_clock(void) {
-  clock_start_hfclk(0);
 }
 
 void init_leds(void) {
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO29);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO30);
-  gpio_set(  P0, GPIO30); // LED1 is P0.30
-  gpio_clear(P0, GPIO29); // LED2 is P0.29
+  gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+  gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
 }
 
 void init_uart(void) {
-  uart_disable(UART0);
-  gpio_mode_setup(P0, GPIO_MODE_INPUT,  GPIO_PUPD_NONE,   GPIO5);
-  gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO4);
-  uart_configure( // TX1 is P0.04 and RX1 is P0.05
-  UART0, GPIO4, GPIO5, GPIO_UNCONNECTED, GPIO_UNCONNECTED,
-  UART_BAUD_115200, 0
-  );
-  uart_enable(UART0);
+  if (!device_is_ready(uart_dev)) {
+    return;
+  }
 }
 
 void init_gpio(void) {
-    P1_PIN_CNF(9) = (1UL << 0) | (1UL << 1);
-    
-    uint32_t verify = P1_PIN_CNF(9);
-
-    // // LED1 = write succeeded, LED2 = write failed
-    // if (verify != 0) {
-    //     gpio_set(P0, LED1);
-    // } else {
-    //     gpio_set(P0, LED2);
-    // }
-    
-    // while(1); // stop here so we can see result
-
-    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
-    gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
-    gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO15); // RF CSN
+  gpio_pin_configure_dt(&tx_en_pin, GPIO_OUTPUT_INACTIVE);
+  gpio_pin_configure_dt(&rx_en_pin, GPIO_OUTPUT_INACTIVE);
+  gpio_pin_configure_dt(&rf_fe_pin, GPIO_OUTPUT_INACTIVE);
 }
 
 
 void init_radio(void) {
-  radio_enable();
-  RADIO_MODE = 15; // ieee standard
+  NRF_RADIO->POWER = 1;
 
-  radio_set_datawhiteiv(0);
-  radio_enable_whitening();
+  NRF_RADIO->MODE = 15; // ieee standard
+  NRF_RADIO->DATAWHITEIV = 0;
+  
+  NRF_RADIO->FREQUENCY = 40;  // 2440 mhz
+  NRF_RADIO->CRCCNF = 2;      // enable crc
 
-  radio_set_balen(4);
-  radio_set_maxlen(64);
-  radio_set_frequency(40);  // 2440 mhz
-  radio_set_crclen(2);      // enable crc
+  NRF_RADIO->CRCPOLY = 0X11021;
+  NRF_RADIO->CRCINIT = 0;
+  NRF_RADIO->CRCCNF |= (2 << 8); // skip address and start crc after len byte
 
-  RADIO_CRCPOLY = 0X11021;
-  RADIO_CRCINIT = 0;
-  RADIO_CRCCNF |= (2 << 8); // skip address and start crc after len byte
+  NRF_RADIO->PCNF0 = (8 << 0);
+  NRF_RADIO->PCNF1 = (64 << 0) | (4 << 16) | (1 << 25);
 
-  radio_configure_packet(8,0,0);
+  NRF_RADIO->BASE0 = 0x89BED600;
+  NRF_RADIO->PREFIX0 = 0xE7;
+  NRF_RADIO->TXADDRESS = 0;
+  NRF_RADIO->RXADDRESSES = 1;
 
-  radio_set_addr(0, RADIO_DAB(0), RADIO_DAP(0));
-  radio_set_tx_address(0);
-  radio_set_rx_address(0);
-
-  radio_set_txpower(RADIO_TXPOWER_POS_4DBM);
+  NRF_RADIO->TXPOWER = 4;
   RADIO_CCACTRL = 1;  // cca mode to carrier
 }
 
 // ========== UART Communication functions ========== //
 
 void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o) {
-  uart_start_rx(UART0);                              // Generate STARTRX task
-  while(                                             // while
-   rx_cmd_buff_o->state!=RX_CMD_BUFF_STATE_COMPLETE  //  Command not complete
-  ) {                                                //
-    while(!UART_EVENT_RXDRDY(UART0)) {}              // Wait until RXD is ready
-    UART_EVENT_RXDRDY(UART0) = 0;                    // Clear RXDRDY event
-    uint8_t b = uart_recv(UART0);                    // Receive byte from RX pin
-    push_rx_cmd_buff(rx_cmd_buff_o, b);              // Push byte to buffer
-  }                                                  //
-  uart_stop_rx(UART0);                               // Generate STOPRX task
+  while(rx_cmd_buff_o->state != RX_CMD_BUFF_STATE_COMPLETE) {
+    uint8_t c;
+    if (uart_poll_in(uart_dev, &c) == 0) {
+      push_rx_cmd_buff(rx_cmd_buff_o, c);
+    } else {
+      break;
+    }
+  }
 }
 
 void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
@@ -237,67 +269,53 @@ void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
 }
 
 void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o) {
-  uart_start_tx(UART0);                              // Generate STARTTX task
-  while(                                             // while
-   !(tx_cmd_buff_o->empty)                           //  TX buffer not empty
-  ) {                                                //
-    uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);      // Pop byte from TX buffer
-    uart_send(UART0,b);                              // Send byte to TX pin
-    while(!UART_EVENT_TXDRDY(UART0)) {}              // Wait until TXD is ready
-    UART_EVENT_TXDRDY(UART0) = 0;                    // Clear TXDRDY event
-    if(tx_cmd_buff_o->empty) {                       // if TX buffer empty
-      gpio_toggle(P0, GPIO30);                       //  Toggle LED1
-      gpio_toggle(P0, GPIO29);                       //  Toggle LED2
-    }                                                //
-  }                                                  //
-  uart_stop_tx(UART0);                               // Generate STOPTX task
+  while(!(tx_cmd_buff_o->empty)) {
+    uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
+    uart_poll_out(uart_dev, b);
+    if(tx_cmd_buff_o->empty) {
+      gpio_pin_toggle_dt(&led1);
+      gpio_pin_toggle_dt(&led2);
+    }
+  }
 }
 
 // ========== GPIO Functions ========== //
 
 void enable_rf(void) {
-    P1_OUTSET = (1UL << 9);
+  gpio_pin_set_dt(&rf_fe_pin, 1);
 }
 
 void disable_rf(void) {
-    P1_OUTCLR = (1 << 9);
+  gpio_pin_set_dt(&rf_fe_pin, 0);
 }
 
 void enable_rx(){
-  gpio_clear(P0, TX_EN_PIN);
-      for(int i=0; i<2000000; i++) {
-      __asm__("nop"); // Settle time to ensure RX_ENABLE is LOW
-    }
-  gpio_set(P0, RX_EN_PIN);
+  gpio_pin_set_dt(&tx_en_pin, 0);
+  k_msleep(50);
+  gpio_pin_set_dt(&rx_en_pin, 1);
 }
 
 void enable_tx(){
-  gpio_clear(P0, RX_EN_PIN);
-      for(int i=0; i<2000000; i++) {
-      __asm__("nop"); // Settle time to ensure TX_ENABLE is LOW
-    }
-  gpio_set(P0, TX_EN_PIN);
+  gpio_pin_set_dt(&rx_en_pin, 0);
+  k_msleep(50);
+  gpio_pin_set_dt(&tx_en_pin, 1);
 }
 
 void com_blink_demo(void) {
-    // blink for 15 seconds (slow)
-    for(int k = 0; k < 20; k++) {
-      for(int i = 0; i < 4000000; i++) {
-        __asm__("nop");
-      }
-      gpio_toggle(P0, LED1);
-      gpio_toggle(P0, LED2);
-    }
-
-    // faster blink for 15 seconds (fast)
-    for(int k = 0; k < 20; k++) {
-      for(int i = 0; i < 2000000; i++) {
-        __asm__("nop");
-      }
-      gpio_toggle(P0, LED1);
-      gpio_toggle(P0, LED2);
-    }
+  // blink for 15 seconds (slow)
+  for(int k = 0; k < 20; k++) {
+    k_msleep(250);
+    gpio_pin_toggle_dt(&led1);
+    gpio_pin_toggle_dt(&led2);
   }
+
+  // faster blink for 15 seconds (fast)
+  for(int k = 0; k < 20; k++) {
+    k_msleep(100);
+    gpio_pin_toggle_dt(&led1);
+    gpio_pin_toggle_dt(&led2);
+  }
+}
 
 
 // ========== UART Messages to CDH ========== //
@@ -325,9 +343,9 @@ uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 void init_radio_tx_test(void) {
   // 1. HARD RESET THE RADIO PERIPHERAL
   // This wipes all IEEE mode artifacts that are hanging the state machine!
-  MMIO32(RADIO_BASE + 0x500) = 0; // POWER OFF
-  for(int i=0; i<1000; i++) { __asm__("nop"); } // Let silicon settle
-  MMIO32(RADIO_BASE + 0x500) = 1; // POWER ON
+  NRF_RADIO->POWER = 0; // POWER OFF
+  k_busy_wait(500); // Let silicon settle
+  NRF_RADIO->POWER = 1; // POWER ON
 
   // 2. Configure for basic unmodulated carrier wave
   RADIO_MODE = 0;           // basic 1Mbps mode
@@ -361,10 +379,8 @@ void blast_carrier(void) {
 
   // trap the cpu here so it just keeps broadcasting and flashing the LED
   while (1) {
-    for(int i=0; i<4000000; i++) {
-      __asm__("nop");
-    }
-    gpio_toggle(P0, LED2);
+    k_msleep(250);
+    gpio_pin_toggle_dt(&led2);
   }
 }
 
@@ -413,16 +429,16 @@ void tx_radio(uint8_t* pckt, size_t length) {
 	tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
 	clear_tx_cmd_buff(&tx_cmd_buff);
 
-	gpio_set(P0, GPIO2); // enable front rx
+	gpio_pin_set_dt(&rx_en_pin, 1); // enable front rx
 	
-	radio_set_packet_ptr(pckt); // point to packet that we made
+	NRF_RADIO->PACKETPTR = (uint32_t)pckt; // point to packet that we made
 
 	if (length > 125) {
 	// IEEE 802.15.4 packets have a maximum payload size of 127 bytes (125 b/c crc uses 2 playload bytes)
 	return;
 	}
 
-	radio_enable_rx(); // TASK_RXEN = 1
+	NRF_RADIO->TASKS_RXEN = 1; // TASK_RXEN = 1
 	
 	// RXEN -> RXRU -> RXIDLE
 	while(RADIO_STATE != 1){ // Pass when not in RXRU
@@ -518,7 +534,7 @@ void tx_radio(uint8_t* pckt, size_t length) {
 	}
 	RADIO_EVENT_DISABLED = 0; // set back to 0
 	
-	gpio_clear(P0, GPIO3); // disable front tx
+	gpio_pin_set_dt(&tx_en_pin, 0); // disable front tx
 }
 
 //RADIO RX
@@ -533,16 +549,16 @@ void rx_radio(uint8_t* pckt, size_t length) {
 	tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
 	clear_tx_cmd_buff(&tx_cmd_buff);
 	
-	gpio_set(P0, GPIO2); // enable front rx
+	gpio_pin_set_dt(&rx_en_pin, 1); // enable front rx
 	
-	radio_set_packet_ptr(pckt); // point to packet that we made
+	NRF_RADIO->PACKETPTR = (uint32_t)pckt; // point to packet that we made
 	
 	if (length > 125) {
 	// IEEE 802.15.4 packets have a maximum payload size of 127 bytes (125 b/c crc uses 2 playload bytes)
 	return;
 	}
 
-	radio_enable_rx(); // TASK_RXEN = 1
+	NRF_RADIO->TASKS_RXEN = 1; // TASK_RXEN = 1
 	
 	// RXEN -> RXRU -> RXIDLE
 	while(RADIO_STATE != 1){ // Pass when not in RXRU
@@ -604,7 +620,7 @@ void rx_radio(uint8_t* pckt, size_t length) {
 	
 	RADIO_EVENT_DISABLED = 0; // set back to 0
 	
-	gpio_clear(P0, GPIO2); // disable front rx
+	gpio_pin_set_dt(&rx_en_pin, 0); // disable front rx
 	
 	pckt[15] = (uint8_t)RADIO_CRCSTATUS; 
 }
@@ -623,7 +639,7 @@ void test_tx(void) {
     }
     
     // toggle an led so you can visually see the packets flying
-    gpio_toggle(P0, LED2);
+    gpio_pin_toggle_dt(&led2);
   }
 }
 
@@ -633,30 +649,30 @@ void test_tx(void) {
 
 void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
 
   com_blink_demo();
 
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
   
   // Blink CDH (No rx_uart catch needed!)
   cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
   tx_uart(tx_cmd_buff);
 
   enable_rf();
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
 
   enable_rx();
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
 
   enable_tx();
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
 
   // Enable Payload (No rx_uart catch needed!)
   cdh_enable_pay(rx_cmd_buff, tx_cmd_buff);
   tx_uart(tx_cmd_buff);
   
-  for(int i=0; i<48000000; i++) { __asm__("nop"); }
+  k_msleep(1000);
 
   // Flush the RX pin just in case garbage is sitting there
   //uart_stop_rx(UART0);
@@ -672,15 +688,15 @@ void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 
 void flash_erase_page(uint32_t page) {
   // Enable erase
-  NVMC_CONFIG = NVMC_CONFIG_EEN;
+  NRF_NVMC->CONFIG = NVMC_CONFIG_EEN;
   __asm__("isb 0xF");
   __asm__("dsb 0xF");
   // Erase the page
-  NVMC_ERASEPAGE = page*(0x00001000);
+  NRF_NVMC->ERASEPAGE = page*(0x00001000);
   // Wait for erase to complete
-  while(NVMC_READY==NVMC_READY_BUSY) {}
+  while(NRF_NVMC->READY==NVMC_READY_BUSY) {}
   // Enable read-only mode
-  NVMC_CONFIG = NVMC_CONFIG_REN;
+  NRF_NVMC->CONFIG = NVMC_CONFIG_REN;
   __asm__("isb 0xF");
   __asm__("dsb 0xF");
 }
@@ -691,105 +707,8 @@ void flash_erase_page(uint32_t page) {
 
 // This example implementation of bootloader_write_page_addr32 writes 128 bytes
 // of data to a region of memory beginning at the start address
-int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff){
-  if (
-   rx_cmd_buff->state==RX_CMD_BUFF_STATE_COMPLETE &&
-   rx_cmd_buff->data[OPCODE_INDEX]==BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE
-  ) {
-    uint32_t addr_1 = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX]);
-    uint32_t addr_2 = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX+1]);
-    uint32_t addr_3 = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX+2]);
-    uint32_t addr_4 = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX+3]);
-    uint32_t start_addr = (addr_1<<24)|(addr_2<<16)|(addr_3<<8)|(addr_4<<0);
-    // write data
-    for(size_t i=0; i<BYTES_PER_BLR_PLD; i+=4) {
-      // APP_ADDR==0x00008000 corresponds to the start of Flash page 8, and
-      // 0x00008800 corresponds to the start of Flash page 9, etc.
-      // Need to erase page once before writing inside of it
-      // Check for every new word since write_addr32 need not be page-aligned
-      if((i+start_addr)%BYTES_PER_FLASH_PAGE==0) {
-        flash_erase_page((i+start_addr)/BYTES_PER_FLASH_PAGE);
-      }
-      uint32_t word = *(uint32_t*)((rx_cmd_buff->data)+PLD_START_INDEX+1+i);
-      // Enable write
-      NVMC_CONFIG = NVMC_CONFIG_WEN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-      // Write word
-      MMIO32(i+start_addr) = word;
-      // Wait for write to complete
-      while(NVMC_READY==NVMC_READY_BUSY) {}
-      // Enable read-only mode
-      NVMC_CONFIG = NVMC_CONFIG_REN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-    }
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-// This example implementation of handle_bootloader_jump returns 0 because this
-// example program does not implement execution of user applications
-int handle_bootloader_jump(void){
-  return 0;
-}
-
-// This example implementation of bootloader_active always returns 1 because
-// this example program does not implement execution of user applications
-int bootloader_active(void) {
-  return 1;
-}
-
-// This example implementation of handle_bootloader_erase erases the portion of
-// Flash accessible to bootloader_write_page
-int handle_bootloader_erase(void){
-  for(size_t subpage_id=0; subpage_id<255; subpage_id++) {
-    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
-    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
-    // Need to erase page once before writing inside of it
-    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
-      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
-    }
-  }
-  return 1;
-}
-
-// This example implementation of handle_bootloader_write_page writes 128 bytes 
-// of data to a region of memory indexed by the "page number" parameter (the
-// "sub-page ID").
-int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff){
-  if(
-   rx_cmd_buff->state==RX_CMD_BUFF_STATE_COMPLETE &&
-   rx_cmd_buff->data[OPCODE_INDEX]==BOOTLOADER_WRITE_PAGE_OPCODE
-  ) {
-    uint32_t subpage_id = (uint32_t)(rx_cmd_buff->data[PLD_START_INDEX]);
-    // subpage_id==0x00 writes to APP_ADDR==0x00008000 i.e. start of page 8
-    // So subpage_id==0x20 writes to addr 0x00009000 i.e. start of page 9 etc
-    // Need to erase page once before writing inside of it
-    if((subpage_id*BYTES_PER_BLR_PLD)%BYTES_PER_FLASH_PAGE==0) {
-      flash_erase_page(8+(subpage_id*BYTES_PER_BLR_PLD)/BYTES_PER_FLASH_PAGE);
-    }
-    // write data
-    uint32_t start_addr = APP_ADDR+subpage_id*BYTES_PER_BLR_PLD;
-    for(size_t i=0; i<BYTES_PER_BLR_PLD; i+=4) {
-      uint32_t word = *(uint32_t*)((rx_cmd_buff->data)+PLD_START_INDEX+1+i);
-      // Enable write
-      NVMC_CONFIG = NVMC_CONFIG_WEN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-      // Write word
-      MMIO32(i+start_addr) = word;
-      // Wait for write to complete
-      while(NVMC_READY==NVMC_READY_BUSY) {}
-      // Enable read-only mode
-      NVMC_CONFIG = NVMC_CONFIG_REN;
-      __asm__("isb 0xF");
-      __asm__("dsb 0xF");
-    }
-    return 1;
-  } else {
-    return 0;
-  }
-}
+int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff) { return 1; }
+int handle_bootloader_jump(void) { return 0; }
+int bootloader_active(void) { return 1; }
+int handle_bootloader_erase(void) { return 1; }
+int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff) { return 1; }
