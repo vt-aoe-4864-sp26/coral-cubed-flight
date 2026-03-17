@@ -1,10 +1,14 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." >/dev/null 2>&1 && pwd)"
 
-cd "$SCRIPT_DIR/tools/" || exit 1
-source sourcefile.txt
-cd "$SCRIPT_DIR" || exit 1
+# Activate Python Virtual Environment
+source "$PROJECT_ROOT/coraldev/bin/activate" || { echo -e "Failed to activate venv"; exit 1; }
 
-make || { echo -e "Build Errors"; exit 1; }
+cd "$PROJECT_ROOT" || exit 1
 
-st-flash write build/cdh.bin 0x8000000
+echo "Building CDH with west..."
+west build -d build_cdh -p always -b stm32l496g_disco src/main/CDH || { echo -e "Build Errors"; exit 1; }
+
+echo "Flashing CDH with st-flash..."
+st-flash write build_cdh/zephyr/zephyr.bin 0x8000000

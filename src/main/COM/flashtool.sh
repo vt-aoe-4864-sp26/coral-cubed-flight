@@ -1,11 +1,15 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." >/dev/null 2>&1 && pwd)"
 
+# Activate Python Virtual Environment
+source "$PROJECT_ROOT/coraldev/bin/activate" || { echo -e "Failed to activate venv"; exit 1; }
+
+cd "$PROJECT_ROOT" || exit 1
+
+echo "Building COM with west..."
+west build -d build_com -p always -b nrf52833dk/nrf52833 src/main/COM || { echo -e "Build Errors"; exit 1; }
+
+echo "Flashing COM with openocd..."
 cd "$SCRIPT_DIR/tools/" || exit 1
-source sourcefile.txt
-cd "$SCRIPT_DIR" || exit 1
-
-make || { echo -e "Build Errors"; exit 1; }
-
-cd "$SCRIPT_DIR/tools/" || exit 1
-openocd -f stlink.cfg -f nrf52.cfg -c "init; halt; program \"$SCRIPT_DIR/build/com.bin\"; reset; exit"
+openocd -f stlink.cfg -f nrf52.cfg -c "init; halt; program \"$PROJECT_ROOT/build_com/zephyr/zephyr.bin\" 0x0 ; reset; exit"

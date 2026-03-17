@@ -343,14 +343,14 @@ uint8_t dummy_packet[4] = {0xde, 0xad, 0xbe, 0xef};
 void init_radio_tx_test(void) {
   // 1. HARD RESET THE RADIO PERIPHERAL
   // This wipes all IEEE mode artifacts that are hanging the state machine!
-  NRF_RADIO->POWER = 0; // POWER OFF
-  k_busy_wait(500); // Let silicon settle
-  NRF_RADIO->POWER = 1; // POWER ON
+  NRF_RADIO->POWER = 0;   // POWER OFF
+  k_busy_wait(500);           // Let silicon settle
+  NRF_RADIO->POWER = 1;   // POWER ON
 
   // 2. Configure for basic unmodulated carrier wave
   RADIO_MODE = 0;           // basic 1Mbps mode
   RADIO_FREQUENCY = 10;     // 2410 MHz
-  RADIO_TXPOWER = 4;        // +4 dBm
+  RADIO_TXPOWER = 4;       // +4 dBm
   
   // Basic packet config so the synth doesn't get confused
   RADIO_PCNF0 = (0 << 16) | (1 << 8) | (8 << 0);

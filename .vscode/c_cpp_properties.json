@@ -25,6 +25,18 @@
                 "limitSymbolsToIncludedHeaders": false
             }
         },
+
+        {
+            "name": "Zephyr CDH",
+            "compileCommands": "${workspaceFolder}/build_cdh/compile_commands.json"
+        },
+        
+        {
+            "name": "Zephyr COM",
+            "compileCommands": "${workspaceFolder}/build_com/compile_commands.json"
+        },
+    
+
         {
             "name": "Linux (Fallback)",
             "includePath": [
