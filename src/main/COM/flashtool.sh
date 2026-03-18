@@ -10,6 +10,6 @@ cd "$PROJECT_ROOT" || exit 1
 echo "Building COM with west..."
 west build -d build_com -p always -b nrf52833dk/nrf52833 src/main/COM || { echo -e "Build Errors"; exit 1; }
 
-echo "Flashing COM with openocd..."
+echo "flashing com with openocd..."
 cd "$SCRIPT_DIR/tools/" || exit 1
-openocd -f stlink.cfg -f nrf52.cfg -c "init; halt; program \"$PROJECT_ROOT/build_com/zephyr/zephyr.bin\" 0x0 ; reset; exit"
+openocd -f stlink.cfg -f nrf52.cfg -c "reset_config none; program \"$PROJECT_ROOT/build_com/zephyr/zephyr.bin\" 0x0 verify reset; exit"

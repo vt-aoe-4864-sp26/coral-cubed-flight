@@ -12,6 +12,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/uart.h>
 #include <hal/nrf_radio.h>
+#include <hal/nrf_clock.h>
 #include <com.h>                    // COM header
 #include <tab.h>                    // TAB header
 
@@ -201,6 +202,10 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 // ========== Board initialization functions ========== //
 
 void init_clock(void) {
+  // Start the High Frequency Clock (HFXO) which is required for the bare-metal Radio
+  // We use nrf_clock_task_trigger, but we won't wait in a blocking loop because Zephyr 
+  // might intercept the hardware event natively, causing this while() to hang forever.
+  nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_HFCLKSTART);
 }
 
 void init_leds(void) {
@@ -210,7 +215,11 @@ void init_leds(void) {
 
 void init_uart(void) {
   if (!device_is_ready(uart_dev)) {
-    return;
+    // Trap cpu on failure so it doesn't hard fault later
+    while(1) {
+      gpio_pin_toggle_dt(&led1);
+      k_msleep(100);
+    }
   }
 }
 

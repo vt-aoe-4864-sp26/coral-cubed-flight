@@ -32,3 +32,11 @@ chmod +x flashtool.sh
 dos2unix flashtool.sh
 ./flashtool.sh
 ```
+
+ZEPHYR Updates:
+
+Did your board decide to kill itself? Don't panic, Nuke the bootloader:
+
+```bash
+openocd -f stlink.cfg -f nrf52.cfg -c "init; nrf52_recover; exit"
+```

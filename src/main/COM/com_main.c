@@ -14,11 +14,14 @@
 
 int main(void) {
   // setup mcu
+  //init_clock();
   init_leds();
   init_uart();
-  init_clock();
   init_gpio();
-  init_radio();
+  //init_radio();cd 
+
+  // Blink on boot so we know the firmware started successfully!
+  com_blink_demo();
 
   //blast_carrier();
 
