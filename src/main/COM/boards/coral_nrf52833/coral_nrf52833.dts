@@ -1,0 +1,34 @@
+/dts-v1/;
+#include <nordic/nrf52833_qiaa.dtsi>
+#include "coral_nrf52833-pinctrl.dtsi"
+
+/ {
+    model = "Coral nRF52833";
+    compatible = "coral,nrf52833";
+
+    chosen {
+        zephyr,sram  = &sram0;
+        zephyr,flash = &flash0;
+    };
+
+    aliases {
+        led0 = &com_led1;
+        led1 = &com_led2;
+    };
+
+    leds {
+        compatible = "gpio-leds";
+        com_led1: com_led_0 {
+            gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+            label = "COM LED1";
+        };
+        com_led2: com_led_1 {
+            gpios = <&gpio0 29 GPIO_ACTIVE_HIGH>;
+            label = "COM LED2";
+        };
+    };
+};
+
+&gpiote { status = "okay"; };
+&gpio0   { status = "okay"; };
+&gpio1   { status = "okay"; };

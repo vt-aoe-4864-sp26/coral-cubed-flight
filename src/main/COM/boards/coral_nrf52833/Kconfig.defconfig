@@ -1,0 +1,2 @@
+if BOARD_CORAL_NRF52833
+endif

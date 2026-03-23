@@ -1,0 +1,6 @@
+board:
+  name: coral_nrf52833
+  full_name: Coral nRF52833
+  vendor: coral
+  socs:
+  - name: nrf52833
