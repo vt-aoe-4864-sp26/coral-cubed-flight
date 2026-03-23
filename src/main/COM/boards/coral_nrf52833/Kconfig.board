@@ -1,2 +1,0 @@
-config BOARD_CORAL_NRF52833
-	bool "Coral nRF52833 Custom Board"
