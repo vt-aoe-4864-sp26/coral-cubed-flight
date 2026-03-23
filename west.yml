@@ -8,13 +8,10 @@ manifest:
       remote: zephyrproject-rtos
       revision: v3.7.0
       import:
-        # This filters the massive Zephyr module list down to just what your two chips need.
         name-allowlist:
           - cmsis              # Core ARM Cortex headers (required by both)
-          - hal_stm32          # Vendor HAL for the STM32 board
-          - hal_nordic         # Vendor HAL for the nRF52833 board
-          - segger             # Standard debug/RTT library (very common for Nordic/STM32)
-
+          - hal_stm32          # Vendor HAL for the STM32
+          - hal_nordic         # Vendor HAL for the nRF52833
+          - segger             # Standard debug libs
   self:
-    # Points west back to your repository
     path: coral-cubed-flight
