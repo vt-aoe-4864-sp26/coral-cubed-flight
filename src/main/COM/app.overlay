@@ -1,59 +1,31 @@
-#include <zephyr/dt-bindings/pinctrl/nrf-pinctrl.h>
-
 / {
-	aliases {
-		led0 = &led_1;
-		led1 = &led_2;
-		tx-en = &tx_en;
-		rx-en = &rx_en;
-		rf-fe = &rf_fe;
-	};
+    chosen {
+        zephyr,sram = &sram0;
+        zephyr,flash = &flash0;
+        /* No console chosen — matches CONFIG_CONSOLE=n */
+    };
 
-	leds {
-		compatible = "gpio-leds";
-		led_1: led_1 {
-			gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
-			label = "LED 1";
-		};
-		led_2: led_2 {
-			gpios = <&gpio0 29 GPIO_ACTIVE_HIGH>;
-			label = "LED 2";
-		};
-		tx_en: tx_en {
-			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-			label = "TX EN";
-		};
-		rx_en: rx_en {
-			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
-			label = "RX EN";
-		};
-		rf_fe: rf_fe {
-			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-			label = "RF FRONTEND";
-		};
-	};
+    aliases {
+        led0 = &com_led1;
+        led1 = &com_led2;
+    };
+
+    leds {
+        compatible = "gpio-leds";
+        com_led1: com_led_0 {
+            gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+            label = "COM LED1";
+        };
+        com_led2: com_led_1 {
+            gpios = <&gpio0 29 GPIO_ACTIVE_HIGH>;
+            label = "COM LED2";
+        };
+    };
 };
 
-&pinctrl {
-	uart0_default: uart0_default {
-		group1 {
-			psels = <NRF_PSEL(UART_TX, 0, 4)>,
-				<NRF_PSEL(UART_RX, 0, 5)>;
-		};
-	};
-	uart0_sleep: uart0_sleep {
-		group1 {
-			psels = <NRF_PSEL(UART_TX, 0, 4)>,
-				<NRF_PSEL(UART_RX, 0, 5)>;
-			low-power-enable;
-		};
-	};
-};
-
-&uart0 {
-    status = "okay";
-    current-speed = <115200>;
-    pinctrl-0 = <&uart0_default>;
-    pinctrl-1 = <&uart0_sleep>;
-    pinctrl-names = "default", "sleep";
+/* Disable board default LEDs if nrf52833dk board file defines them */
+/ {
+    aliases {
+        /* Override any board-level led aliases */
+    };
 };
