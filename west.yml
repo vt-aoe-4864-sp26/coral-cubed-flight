@@ -13,5 +13,7 @@ manifest:
           - hal_stm32          # Vendor HAL for the STM32
           - hal_nordic         # Vendor HAL for the nRF52833
           - segger             # Standard debug libs
+          - cmsis
+          - cmsis_6
   self:
     path: coral-cubed-flight

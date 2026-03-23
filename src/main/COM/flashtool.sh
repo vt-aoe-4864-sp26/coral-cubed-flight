@@ -12,4 +12,5 @@ west build -d build_com -p always -b nrf52833dk/nrf52833 src/main/COM || { echo 
 
 echo "flashing com with openocd..."
 cd "$SCRIPT_DIR/tools/" || exit 1
-openocd -f stlink.cfg -f nrf52.cfg -c "reset_config none; program \"$PROJECT_ROOT/build_com/zephyr/zephyr.bin\" 0x0 verify reset; exit"
+
+openocd -f interface/stlink.cfg -f target/nrf52.cfg -c "transport select hla_swd; init; reset halt; nrf5 mass_erase; program \"$PROJECT_ROOT/build_com/zephyr/zephyr.hex\" verify reset exit"
