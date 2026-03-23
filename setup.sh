@@ -61,7 +61,8 @@ fi
 popd > /dev/null
 
 echo -e "${GREEN}--- Initializing Zephyr Workspace ---${NC}"
-pip install west
+# Use the python module executor to guarantee it respects the virtual environment
+python3 -m pip install west
 
 if [ ! -d ".west" ]; then
     if [ ! -f "west.yml" ]; then
@@ -77,16 +78,20 @@ fi
 
 west update
 west zephyr-export
+
+# For Zephyr v4.2.0+, this command works perfectly
 west packages pip --install
 
-if [ -d "zephyr" ]; then
-    pushd zephyr > /dev/null
+echo -e "${GREEN}--- Installing FULL Zephyr SDK ---${NC}"
+# Look one level up for the zephyr folder!
+if [ -d "../zephyr" ]; then
+    pushd ../zephyr > /dev/null
+    # West commands work automatically here because the venv is still active
     west sdk install
     popd > /dev/null
 else
-    echo -e "${RED}Warning: 'zephyr' directory not found after update. SDK install skipped.${NC}"
+    echo -e "${RED}Warning: '../zephyr' directory not found after update. SDK install skipped.${NC}"
 fi
-
 echo -e "${GREEN}--- Building Coralmicro ---${NC}"
 if [ -d "third-party/coralmicro" ]; then
     pushd third-party/coralmicro > /dev/null
