@@ -146,6 +146,7 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 
 void init_clock(void) {
   clock_start_hfclk(0);
+  clock_start_lfclk(0);
 }
 
 void init_leds(void) {
@@ -183,8 +184,36 @@ void init_gpio(void) {
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, TX_EN_PIN);
     gpio_mode_setup(GPIO, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RX_EN_PIN);
     gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO15); // RF CSN
+
+    // LFCLK debug pin
+    gpio_mode_setup(P0, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LFCLK_DEBUG_PIN);
+    gpio_clear(P0, LFCLK_DEBUG_PIN);
 }
 
+
+void init_rtc_lfclk_debug(void) {
+    /* stop RTC first */
+    RTC0_TASKS_STOP = 1;
+    RTC0_PRESCALER = 0;              // 32768 Hz tick from LFCLK
+    RTC0_CC[0] = 16384;              // event every 0.5 s
+    RTC0_EVTENSET = (1 << 16);       // compare 0 event
+    RTC0_INTENSET = (1 << 16);       // compare 0 interrupt
+
+    nvic_enable_irq(NVIC_RTC0_IRQ);
+
+    RTC0_TASKS_CLEAR = 1;
+    RTC0_TASKS_START = 1;
+}
+
+void rtc0_isr(void) {
+    if (RTC0_EVENTS_COMPARE[0]) {
+        RTC0_EVENTS_COMPARE[0] = 0;
+
+        gpio_toggle(P0, LFCLK_DEBUG_PIN);
+
+        RTC0_CC[0] += 16384;   // schedule next toggle
+    }
+}
 
 void init_radio(void) {
   radio_enable();

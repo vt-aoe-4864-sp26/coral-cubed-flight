@@ -28,6 +28,7 @@
 #define RX_EN_PIN       GPIO2
 #define LED1            GPIO30
 #define LED2            GPIO29
+#define LFCLK_DEBUG_PIN GPIO9
 
 // ========== Byte counts
 #define BYTES_PER_BLR_PLD    ((uint32_t)128)
@@ -137,6 +138,11 @@ void init_leds(void);
 void init_uart(void);
 void init_gpio(void);
 void init_radio(void);
+
+// ========== LFCLK Debug ========== //
+void lfclk_debug_pulse(void);
+void init_rtc_lfclk_debug(void);
+void rtc0_isr(void);
 
 // ========== COM Functions ========== //
 
