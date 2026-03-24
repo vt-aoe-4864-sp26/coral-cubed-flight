@@ -24,6 +24,18 @@ This is accompanied by supporting python scripts for a host PC to drive UART con
 
 ## Dependencies
 
+It is highly reccommended to install this repository into a workspace directory.
+The setup script will install dependencies for Zephyr alongside this repository, and not inside it.
+
+```tree
+REPOS
+|Workspace
+├── coral-cubed-flight
+├── modules
+├── .west
+└── zephyr
+```
+
 If you are installing on Native x64 Linux (recommended):
 
 ```bash
