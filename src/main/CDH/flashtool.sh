@@ -2,13 +2,39 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." >/dev/null 2>&1 && pwd)"
 
-# Activate Python Virtual Environment
-source "$PROJECT_ROOT/coraldev/bin/activate" || { echo -e "Failed to activate venv"; exit 1; }
+# ─── Argument Parsing ─────────────────────────────────────────────────────────
+SKIP_BUILD=false
+for arg in "$@"; do
+    case $arg in
+        --no-build|-nb) SKIP_BUILD=true ;;
+    esac
+done
 
+# ─── Activate venv ────────────────────────────────────────────────────────────
+source "$PROJECT_ROOT/coraldev/bin/activate" || { echo "Failed to activate venv"; exit 1; }
 cd "$PROJECT_ROOT" || exit 1
 
-echo "Building CDH with west..."
-west build -d build_cdh -p always -b stm32l496g_disco src/main/CDH || { echo -e "Build Errors"; exit 1; }
+# ─── Build ────────────────────────────────────────────────────────────────────
+if [ "$SKIP_BUILD" = false ]; then
+    echo "Building CDH with west..."
+    # Pointing to your new custom BSP!
+    west build -d build_cdh -p always -b coral_stm32 src/main/CDH \
+        -- -DBOARD_ROOT="$PROJECT_ROOT/src/main/CDH" \
+        || { echo "Build failed"; exit 1; }
+else
+    echo "Skipping build."
+fi
 
+# ─── Flash ────────────────────────────────────────────────────────────────────
 echo "Flashing CDH with st-flash..."
-st-flash write build_cdh/zephyr/zephyr.bin 0x8000000
+
+# st-flash writes the raw binary to the base flash address 0x08000000
+# The --reset flag ensures the board reboots and runs your code immediately
+st-flash --reset write "$PROJECT_ROOT/build_cdh/zephyr/zephyr.bin" 0x08000000
+
+if [ $? -ne 0 ]; then
+    echo "Flash failed."
+    exit 1
+fi
+
+echo "Flash successful."
