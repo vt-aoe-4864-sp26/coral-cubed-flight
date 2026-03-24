@@ -23,9 +23,12 @@
         led1 = &led_2;
         com-en = &com_en;
         pay-en = &pay_en;
-        uart-0 = &usart1;
-        uart-1 = &usart2;
-        uart-2 = &usart3;
+        
+        /* Your explicit UART mapping */
+        uart-0 = &cdc_acm_uart0;
+        uart-1 = &usart1;
+        uart-2 = &usart2;
+        uart-3 = &usart3;
         watchdog0 = &iwdg;
     };
 
@@ -101,7 +104,7 @@
 };
 
 &usart2 {
-    pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
+    pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
     pinctrl-names = "default";
     current-speed = <115200>;
     status = "okay";
@@ -113,7 +116,6 @@
     current-speed = <115200>;
     status = "okay";
 };
-
 &i2c2 {
     pinctrl-0 = <&i2c2_scl_pb13 &i2c2_sda_pb14>;
     pinctrl-names = "default";
@@ -157,7 +159,7 @@
 /* --- USB VIRTUAL COM PORT --- */
 &usbotg_fs {
     clocks = <&rcc STM32_CLOCK(AHB2, 12)>,
-             <&rcc STM32_SRC_HSI48 CLK48_SEL(0)>; /* Changed to HSI48 */
+            <&rcc STM32_SRC_HSI48 CLK48_SEL(0)>;
     pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
     pinctrl-names = "default";
     status = "okay";
