@@ -12,13 +12,21 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/uart.h>
 
+#include <cdh.h>                    // CDH header
+#include <tab.h>                    // TAB header
+
+
+// ========== Aliasing ========== //
+
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 static const struct gpio_dt_spec com_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(com_en), gpios);
 static const struct gpio_dt_spec pay_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(pay_en), gpios);
 const struct device *uart_dev = DEVICE_DT_GET(DT_NODELABEL(usart1));
-#include <cdh.h>                    // CDH header
-#include <tab.h>                    // TAB header
+
+// ========== Concurrency ========== //
+
+K_SEM_DEFINE(com_awake_sem, 0, 1)
 
 // ========== Tab Handling ========== //
 
@@ -258,35 +266,25 @@ void cdh_blink_demo(void){
 
 // ========== UART Commands to COM ========== //
 
-void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
-  int com_awake = 0;
-  
-  while(!com_awake) {
-    // send request for acknowledgement
-    uint8_t my_payload[] = {VAR_CODE_ALIVE, 0x01, 0x01};
-    msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
-    tx_usart1(tx_cmd_buff);
+void check_com_online(void) {
+    tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
+    clear_tx_cmd_buff(&local_tx);
+    
+    // Create a dummy RX buffer to satisfy the TAB protocol's ID tracking
+    rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
+    
+    while(1) {
+        uint8_t my_payload[] = {VAR_CODE_ALIVE, 0x01, 0x01};
+        msg_to_com(&dummy_rx, &local_tx, COMMON_DATA_OPCODE, my_payload, 3);
+        tx_usart1(&local_tx);
 
-    for(int i = 0; i < 500; i++) {
-      rx_usart1(rx_cmd_buff);
-      
-      if(rx_cmd_buff->state == RX_CMD_BUFF_STATE_COMPLETE) {
-        // listen for the ack that com auto-generates on success
-        if(rx_cmd_buff->data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
-          com_awake = 1;
-          break; // com is alive, exit delay loop
+        if (k_sem_take(&com_awake_sem, K_MSEC(500)) == 0) {
+            break; // COM is alive!
         }
-        clear_rx_cmd_buff(rx_cmd_buff); // clear noise from bad response
-      }
-      k_msleep(1);
+        
+        gpio_pin_toggle_dt(&led2);
     }
-
-    gpio_pin_toggle_dt(&led2);
-  }
-  
-  // clean buffer
-  clear_rx_cmd_buff(rx_cmd_buff);
-  gpio_pin_set_dt(&led2, 0);
+    gpio_pin_set_dt(&led2, 0);
 }
 
 void com_enable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){

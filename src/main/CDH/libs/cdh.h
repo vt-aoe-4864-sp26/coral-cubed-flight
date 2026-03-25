@@ -72,6 +72,9 @@ void init_leds(void);
 void init_uart(void);
 void init_gpio(void);
 
+// ========== Concurrency Variables ========== //
+extern struct k_sem com_awake_sem;
+
 // ========== CDH Functions ========== //
 
 void power_on_com(void);
@@ -82,7 +85,7 @@ void cdh_blink_demo(void);
 void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 // ========== UART Commands to COM ========== //
-void check_com_online(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void check_com_online(void);
 void com_enable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_disable_rf(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_enable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);

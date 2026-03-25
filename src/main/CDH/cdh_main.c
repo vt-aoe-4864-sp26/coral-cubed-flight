@@ -3,13 +3,68 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
+#include <cdh.h>
 
 /* Map our devicetree aliases */
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-const struct device *uart1_dev = DEVICE_DT_GET(DT_ALIAS(uart_1));
-const struct device *uart2_dev = DEVICE_DT_GET(DT_ALIAS(uart_2));
-const struct device *uart3_dev = DEVICE_DT_GET(DT_ALIAS(uart_3));
+const struct device *uart1_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // COM UART
+
+/* 1. Define Message Queue for Completed RX Commands */
+K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 10, 4);
+
+/* ISR specific buffer (only modified inside the ISR) */
+static rx_cmd_buff_t isr_rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH};
+
+/* 2. UART RX Interrupt Callback */
+static void uart1_cb(const struct device *dev, void *user_data) {
+    if (!uart_irq_update(dev)) {
+        return;
+    }
+
+    if (uart_irq_rx_ready(dev)) {
+        uint8_t c;
+        // Read until the FIFO is empty
+        while (uart_fifo_read(dev, &c, 1) == 1) {
+            push_rx_cmd_buff(&isr_rx_buff, c);
+            
+            // If the TAB machine just finished a packet, queue it up!
+            if (isr_rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
+                // Push to thread, drop packet if queue is full (K_NO_WAIT in ISR)
+                k_msgq_put(&rx_cmd_queue, &isr_rx_buff, K_NO_WAIT);
+                clear_rx_cmd_buff(&isr_rx_buff); // Reset for the next incoming command
+            }
+        }
+    }
+}
+
+/* 3. Command Processing Thread */
+void cmd_processor_entry(void) {
+    rx_cmd_buff_t local_rx;
+    tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
+    clear_tx_cmd_buff(&local_tx);
+
+    printk("Command Processor Thread Started.\n");
+
+    while (1) {
+        if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0) {
+            
+            // Intercept the ACK from COM to wake up the boot sequence
+            if (local_rx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
+                k_sem_give(&com_awake_sem);
+            }
+
+            reply(&local_rx, &local_tx); 
+            
+            if (!local_tx.empty) {
+                tx_usart1(&local_tx); 
+            }
+        }
+    }
+}
+
+/* Define the thread: Stack size 1024, Priority 5 */
+K_THREAD_DEFINE(cmd_processor_tid, 1024, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
 
 int main(void) {
     uint32_t dtr = 0;
@@ -33,23 +88,26 @@ int main(void) {
         }
     }
 
-    /* 3. Boot Sequence Logs (Routes to USB) */
-    printk("\n====================================\n");
-    printk(" Coral CDH Boot Sequence Initiated\n");
-    printk("====================================\n");
+    /* Initialize ISR state machine */
+    clear_rx_cmd_buff(&isr_rx_buff);
 
-    /* 4. Verify Board-to-Board Comm Lanes */
-    printk("Checking UART Lanes...\n");
-    printk(" - UART1 (PA9/10): %s\n", device_is_ready(uart1_dev) ? "OK" : "FAILED");
-    printk(" - UART2 (PD5/6):  %s\n", device_is_ready(uart2_dev) ? "OK" : "FAILED");
-    printk(" - UART3 (PC4/5):  %s\n", device_is_ready(uart3_dev) ? "OK" : "FAILED");
-    printk("====================================\n");
+    /* Configure UART Interrupts */
+    if (device_is_ready(uart1_dev)) {
+        uart_irq_callback_user_data_set(uart1_dev, uart1_cb, NULL);
+        uart_irq_rx_enable(uart1_dev);
+    }
 
-    /* 5. Main Flight Loop */
+    /* Turn on COM and wait for it */
+    power_on_com();
+    
+    // Note: check_com_online needs a rewrite (see below)
+    check_com_online(); 
+
+    /* Main Flight Loop (Heartbeat / Watchdog) */
     while (1) {
         printk("CDH Heartbeat - System Nominal.\n");
         gpio_pin_toggle_dt(&led);
-        k_msleep(1000);
+        k_msleep(1000); // Main thread just sleeps and kicks the dog now
     }
     
     return 0;
