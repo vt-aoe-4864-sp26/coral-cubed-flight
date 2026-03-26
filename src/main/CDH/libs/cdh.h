@@ -77,7 +77,7 @@ extern const struct gpio_dt_spec led2;
 extern const struct device *console_dev;
 
 // ========== Concurrency Variables ========== //
-extern struct k_sem com_awake_sem;
+extern struct k_sem com_awake_semaphore;
 
 // ========== CDH Functions ========== //
 

@@ -31,7 +31,7 @@ extern const struct device *uart_ext_dev;
 // ========== Concurrency ========== //
 static struct k_work blink_demo_work;
 
-K_SEM_DEFINE(com_awake_sem, 0, 1)
+K_SEM_DEFINE(com_awake_semaphore, 0, 1)
 
 // ========== Workqueue Handling ========== //
 
@@ -217,7 +217,7 @@ void check_com_online(void) {
         route_tx_packet(&local_tx); 
 
         // 2. Wait for the ACK
-        if (k_sem_take(&com_awake_sem, K_MSEC(500)) == 0) {
+        if (k_sem_take(&com_awake_semaphore, K_MSEC(500)) == 0) {
             // CONNECTED! Do a strobe
             for(int i = 0; i < 6; i++) {
                 gpio_pin_toggle_dt(&led1);

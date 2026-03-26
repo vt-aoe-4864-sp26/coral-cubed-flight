@@ -84,7 +84,7 @@ void cmd_processor_entry(void) {
             
             // Intercept the ACK from COM to wake up the boot sequence
             if (local_rx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
-                k_sem_give(&com_awake_sem);
+                k_sem_give(&com_awake_semaphore);
             }
 
             // Execute logic
@@ -97,7 +97,6 @@ void cmd_processor_entry(void) {
         }
     }
 }
-
 // Define the thread: Stack size 1024, Priority 5
 K_THREAD_DEFINE(cmd_processor_tid, 1024, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
 
