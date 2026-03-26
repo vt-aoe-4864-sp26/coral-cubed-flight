@@ -61,7 +61,6 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       }
       return 0;
 
-    // Trigger the newly threaded demo
     case VAR_CODE_RUN_DEMO:
       k_work_submit(&run_demo_work);
       return 1;
@@ -70,9 +69,9 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       k_work_submit(&blink_demo_work);
       return 1;
 
-    case VAR_CODE_BLINK_CDH:
-      cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
-      return 1;
+    // case VAR_CODE_BLINK_CDH:
+    //   cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
+    //   return 1;
 
     // FEM Control Handlers
     case VAR_CODE_RF_EN:

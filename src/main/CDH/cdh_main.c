@@ -129,10 +129,21 @@ int main(void) {
     // Boot the unified UART pipelines
     init_all_uarts();
     printk("UART Live");
+
     // Pre-emptively turn on COM, and wait for it to respond
+    k_msleep(10000);
     power_on_com();
     printk("COMEN High");
     check_com_online();
+
+    printk("COM is online! Triggering Master Demo...");
+    
+    tx_cmd_buff_t local_demo_tx = {.size=CMD_MAX_LEN};
+    clear_tx_cmd_buff(&local_demo_tx);
+    rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
+    
+    com_start_demo(&dummy_rx, &local_demo_tx);
+    route_tx_packet(&local_demo_tx);
 
     // Main Flight Loop (Heartbeat / Watchdog)
     while (1) {
