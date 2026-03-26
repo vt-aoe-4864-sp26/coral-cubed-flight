@@ -310,46 +310,36 @@ uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
 
 static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   
-  // only build if tx buffer is actually free
   if(tx->empty) {
-    uint8_t local_route_id = CDH; // Default to CDH
+    uint8_t local_route_id = COM; // Default to COM's ID
     uint8_t current_msg_id = 0;
 
-    // Safely pull from RX if it exists
+    // Safely pull from RX if it exists (prevents unprompted demo crash)
     if (rx != NULL) {
         rx->bus_msg_id += 1;
         current_msg_id = rx->bus_msg_id;
         local_route_id = rx->route_id;
     }
 
-    // set standard start bytes
     tx->data[START_BYTE_0_INDEX] = START_BYTE_0;
     tx->data[START_BYTE_1_INDEX] = START_BYTE_1;
-    
-    // length is 6 standard bytes + whatever the payload length is
     tx->data[MSG_LEN_INDEX] = ((uint8_t)6) + pld_len; 
     
-    // Satellite-level hardware ID
-    tx->data[HWID_MSB_INDEX] = 0xCC;
-    tx->data[HWID_LSB_INDEX] = 0xC3;
+    // Use the actual macros now
+    tx->data[HWID_MSB_INDEX] = SAT_HWID_MSB;
+    tx->data[HWID_LSB_INDEX] = SAT_HWID_LSB;
 
-    // split our 16-bit bus id back into two bytes for the openlst packet
     tx->data[MSG_ID_LSB_INDEX] = (uint8_t)(current_msg_id & 0xff);
     tx->data[MSG_ID_MSB_INDEX] = (uint8_t)((current_msg_id >> 8) & 0xff);
-    tx->data[ROUTE_INDEX] = (dest << 4) | (local_route_id & 0x0f);
 
-    // drop in the opcode
+    tx->data[ROUTE_INDEX] = (dest << 4) | (local_route_id & 0x0f);
     tx->data[OPCODE_INDEX] = opcode;
 
-    // copy the payload array into the tx buffer byte by byte
     for(size_t i = 0; i < pld_len; i++) {
       tx->data[PLD_START_INDEX + i] = pld[i];
     }
 
-    // tell the buffer where the message ends (+3 accounts for the first 3 bytes)
     tx->end_index = tx->data[MSG_LEN_INDEX] + 3;
-    
-    // flag the buffer so the uart hardware knows it has work to do
     tx->empty = 0;
   }
 }

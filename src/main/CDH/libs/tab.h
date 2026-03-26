@@ -21,7 +21,6 @@
 #define START_BYTE_0 ((const uint8_t)0x22) // static start byte
 #define START_BYTE_1 ((const uint8_t)0x69) // static start byte
 
-#define SAT_HWID     ((uint8_t))
 
 // Opcodes
 #define COMMON_ACK_OPCODE                   ((uint8_t)0x10)
