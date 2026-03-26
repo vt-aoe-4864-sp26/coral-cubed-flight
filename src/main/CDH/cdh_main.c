@@ -108,6 +108,9 @@ int main(void) {
     uint32_t dtr = 0;
     int usb_err = -1;
 
+    init_leds();
+    init_gpio();
+
     // Initialize Status LED
     if (device_is_ready(led.port)) {
         gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
@@ -125,13 +128,14 @@ int main(void) {
             }
         }
     }
-
+    printk("Console Live");
     // Boot the unified UART pipelines
     init_all_uarts();
-
+    printk("UART Live");
     // Pre-emptively turn on COM, and wait for it to respond
     power_on_com();
-    check_com_online(); 
+    printk("COMEN High");
+    check_com_online();
 
     // Main Flight Loop (Heartbeat / Watchdog)
     while (1) {
