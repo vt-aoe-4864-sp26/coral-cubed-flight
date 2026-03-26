@@ -15,9 +15,10 @@
 #include <tab.h> 
 
 // ========== Aliasing ========== //
+const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 
-static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 static const struct gpio_dt_spec com_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(com_en), gpios);
 static const struct gpio_dt_spec pay_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(pay_en), gpios);
 
@@ -181,8 +182,8 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
           uart_poll_out(target_dev, b);
       }
       // Toggle LEDs on successful TX
-      gpio_pin_toggle_dt(&led1);
-      gpio_pin_toggle_dt(&led2);
+      // gpio_pin_toggle_dt(&led1);
+      // gpio_pin_toggle_dt(&led2);
   } else {
       // Clear the buffer anyway if hardware is offline so we don't lock up
       clear_tx_cmd_buff(tx_cmd_buff_o); 
@@ -205,20 +206,33 @@ void cdh_blink_demo(void){
 void check_com_online(void) {
     tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_tx);
-    
     rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
     
     while(1) {
+        // 1. Turn LED on to indicate we are sending a ping
+        gpio_pin_set_dt(&led2, 1); 
+
         uint8_t my_payload[] = {VAR_CODE_ALIVE, 0x01, 0x01};
         msg_to_com(&dummy_rx, &local_tx, COMMON_DATA_OPCODE, my_payload, 3);
-        
-        route_tx_packet(&local_tx); // Use the new router!
+        route_tx_packet(&local_tx); 
 
+        // 2. Wait for the ACK
         if (k_sem_take(&com_awake_sem, K_MSEC(500)) == 0) {
+            // CONNECTED! Do a strobe
+            for(int i = 0; i < 6; i++) {
+                gpio_pin_toggle_dt(&led1);
+                gpio_pin_toggle_dt(&led2);
+                k_msleep(50);
+            }
             break; 
         }
-        gpio_pin_toggle_dt(&led2); 
+        
+        // 3. COM didn't answer. Turn LED off and wait a moment so we can see it blink
+        gpio_pin_set_dt(&led2, 0); 
+        k_msleep(500); // 500ms ON / 500ms OFF = perfect 1Hz blink
     }
+    
+    gpio_pin_set_dt(&led1, 0);
     gpio_pin_set_dt(&led2, 0);
 }
 

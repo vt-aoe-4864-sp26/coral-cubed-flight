@@ -40,6 +40,10 @@
 #define BOOTLOADER_ACK_REASON_ERASED ((uint8_t)0x01)
 #define BOOTLOADER_ACK_REASON_JUMPED   ((uint8_t)0xff)
 
+// Hardware ID
+#define SAT_HWID_MSB ((uint8_t)0xCC)
+#define SAT_HWID_LSB ((uint8_t)0xC3)
+
 // Route Nibble IDs
 #define GND ((uint8_t)0x00)
 #define COM ((uint8_t)0x01)

@@ -44,7 +44,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 
   switch(var_code) {
     case VAR_CODE_ALIVE:
-      if (*val_ptr == 0x01) return 1;
+      if (*val_ptr == 0x01){
+        gpio_pin_set_dt(&led2, 1); // toggle led2 when connected
+        return 1;
+      } 
+
       return 0;
 
     case VAR_CODE_PAY_EN:

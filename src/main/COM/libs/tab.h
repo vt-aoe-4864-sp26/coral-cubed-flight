@@ -21,7 +21,6 @@
 #define START_BYTE_0 ((const uint8_t)0x22) // static start byte
 #define START_BYTE_1 ((const uint8_t)0x69) // static start byte
 
-// Fixed the syntax error here and provided actual values
 #define SAT_HWID_MSB ((uint8_t)0xCC)
 #define SAT_HWID_LSB ((uint8_t)0xC3)
 

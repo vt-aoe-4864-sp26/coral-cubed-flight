@@ -72,6 +72,10 @@ void init_leds(void);
 void init_uart(void);
 void init_gpio(void);
 
+extern const struct gpio_dt_spec led1;
+extern const struct gpio_dt_spec led2;
+extern const struct device *console_dev;
+
 // ========== Concurrency Variables ========== //
 extern struct k_sem com_awake_sem;
 

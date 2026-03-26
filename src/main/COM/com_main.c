@@ -5,10 +5,13 @@
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
 #include <com.h>
-
+#include <zephyr/usb/usb_device.h>
 // Map our 2 UART lanes
 const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
 const struct device *uart_cdh_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // Hardware to CDH
+
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
 // Central Queue for TAB Parsing
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
@@ -89,15 +92,36 @@ int main(void) {
     init_gpio();
 
     // Boot the USB Console (Ground Link)
-    if (device_is_ready(uart_gnd_dev)) {
-        usb_enable(NULL);
-        int timeout = 25; 
-        while (!dtr && timeout > 0) {
-            uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
-            k_msleep(100);
-            timeout--;
+    if (!device_is_ready(uart_gnd_dev)) {
+        // TRAP 1: Device tree failed to bind the CDC ACM driver
+        while(1) {
+            gpio_pin_toggle_dt(&led2);
+            k_msleep(50); // Furious hyper-blinking
         }
     }
+
+    int err = usb_enable(NULL);
+    if (err != 0) {
+        // TRAP 2: USB failed to initialize (usually a clock or memory issue)
+        while(1) {
+            gpio_pin_toggle_dt(&led2);
+            k_msleep(250); // Medium-fast blinking
+        }
+    }
+
+    // If we make it here, the software successfully turned on the USB hardware!
+    int timeout = 100; // 10 seconds to open terminal
+    while (!dtr && timeout > 0) {
+        uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
+        k_msleep(100);
+        timeout--;
+        gpio_pin_toggle_dt(&led1); // Pulse LED1 while waiting for terminal
+    }
+    
+    gpio_pin_set_dt(&led1, 1); // Go solid solid once connected (or timed out)
+    printk("===========================\n");
+    printk(" COM USB Console Live\n");
+    printk("===========================\n");
     printk("COM USB Live\n");
 
     // Boot ISR pipelines

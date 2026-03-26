@@ -6,9 +6,6 @@
 #include <zephyr/drivers/uart.h>
 #include <cdh.h>
 
-// Map our devicetree aliases
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 
 // Map our 4 UART lanes
 const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
@@ -112,8 +109,9 @@ int main(void) {
     init_gpio();
 
     // Initialize Status LED
-    if (device_is_ready(led.port)) {
-        gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+    if (device_is_ready(led1.port)) {
+        gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+        gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
     }
 
     // Boot the USB Console
@@ -140,7 +138,7 @@ int main(void) {
     // Main Flight Loop (Heartbeat / Watchdog)
     while (1) {
         printk("CDH Heartbeat - System Nominal.\n");
-        gpio_pin_toggle_dt(&led);
+        gpio_pin_toggle_dt(&led1);
         k_msleep(1000); 
     }
     
