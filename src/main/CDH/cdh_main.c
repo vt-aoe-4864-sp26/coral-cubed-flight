@@ -13,8 +13,8 @@ const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 // Map our 4 UART lanes
 const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
 const struct device *uart_com_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // COM
-const struct device *uart_pay_dev = DEVICE_DT_GET(DT_ALIAS(uart_2)); // Payload (Coral)
-const struct device *uart_ext_dev = DEVICE_DT_GET(DT_ALIAS(uart_3)); // External/Debug
+const struct device *uart_ext_dev = DEVICE_DT_GET(DT_ALIAS(uart_2)); // External/Debug
+const struct device *uart_pay_dev = DEVICE_DT_GET(DT_ALIAS(uart_3)); // Payload (Coral)
 
 // Define Message Queue for ALL Completed RX Commands
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
@@ -34,7 +34,7 @@ static uart_lane_ctx_t uart_lanes[4] = {
 };
 
 // The Unified UART RX Interrupt Callback
-static void generic_uart_cb(const struct device *dev, void *user_data) {
+static void generic_uart_callback(const struct device *dev, void *user_data) {
     // Cast the user_data back to our specific buffer for this lane
     uart_lane_ctx_t *ctx = (uart_lane_ctx_t *)user_data;
 
@@ -68,7 +68,7 @@ void init_all_uarts(void) {
         clear_rx_cmd_buff(&ctx->rx_buff);
 
         if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
-            uart_irq_callback_user_data_set(ctx->dev, generic_uart_cb, ctx);
+            uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
             uart_irq_rx_enable(ctx->dev);
         }
     }
