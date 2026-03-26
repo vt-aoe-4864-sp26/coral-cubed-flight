@@ -312,9 +312,15 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
   
   // only build if tx buffer is actually free
   if(tx->empty) {
-    
-    // bump the id so we always have a fresh, monotonic value
-    rx->bus_msg_id += 1;
+    uint8_t local_route_id = CDH; // Default to CDH
+    uint8_t current_msg_id = 0;
+
+    // Safely pull from RX if it exists
+    if (rx != NULL) {
+        rx->bus_msg_id += 1;
+        current_msg_id = rx->bus_msg_id;
+        local_route_id = rx->route_id;
+    }
 
     // set standard start bytes
     tx->data[START_BYTE_0_INDEX] = START_BYTE_0;
@@ -328,11 +334,9 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
     tx->data[HWID_LSB_INDEX] = 0xC3;
 
     // split our 16-bit bus id back into two bytes for the openlst packet
-    tx->data[MSG_ID_LSB_INDEX] = (uint8_t)(rx->bus_msg_id & 0xff);
-    tx->data[MSG_ID_MSB_INDEX] = (uint8_t)((rx->bus_msg_id >> 8) & 0xff);
-
-    // shift destination to the top nibble, glue our own id to the bottom
-    tx->data[ROUTE_INDEX] = (dest << 4) | (rx->route_id & 0x0f);
+    tx->data[MSG_ID_LSB_INDEX] = (uint8_t)(current_msg_id & 0xff);
+    tx->data[MSG_ID_MSB_INDEX] = (uint8_t)((current_msg_id >> 8) & 0xff);
+    tx->data[ROUTE_INDEX] = (dest << 4) | (local_route_id & 0x0f);
 
     // drop in the opcode
     tx->data[OPCODE_INDEX] = opcode;

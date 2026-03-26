@@ -1,3 +1,4 @@
+// cdh_main.c
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
@@ -5,40 +6,75 @@
 #include <zephyr/drivers/uart.h>
 #include <cdh.h>
 
-/* Map our devicetree aliases */
+// Map our devicetree aliases
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-const struct device *uart1_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // COM UART
 
-/* 1. Define Message Queue for Completed RX Commands */
-K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 10, 4);
+// Map our 4 UART lanes
+const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
+const struct device *uart_com_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // COM
+const struct device *uart_pay_dev = DEVICE_DT_GET(DT_ALIAS(uart_2)); // Payload (Coral)
+const struct device *uart_ext_dev = DEVICE_DT_GET(DT_ALIAS(uart_3)); // External/Debug
 
-/* ISR specific buffer (only modified inside the ISR) */
-static rx_cmd_buff_t isr_rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH};
+// Define Message Queue for ALL Completed RX Commands
+K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
 
-/* 2. UART RX Interrupt Callback */
-static void uart1_cb(const struct device *dev, void *user_data) {
+// Context struct to track the state of each lane independently
+typedef struct {
+    const struct device *dev;
+    rx_cmd_buff_t rx_buff;
+} uart_lane_ctx_t;
+
+// Instantiate the four lanes with their appropriate route IDs
+static uart_lane_ctx_t uart_lanes[4] = {
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = GND} },
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH} }, // Listens for CDH
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = PLD} },
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH} }  // Debug routes to CDH
+};
+
+// The Unified UART RX Interrupt Callback
+static void generic_uart_cb(const struct device *dev, void *user_data) {
+    // Cast the user_data back to our specific buffer for this lane
+    uart_lane_ctx_t *ctx = (uart_lane_ctx_t *)user_data;
+
     if (!uart_irq_update(dev)) {
         return;
     }
 
     if (uart_irq_rx_ready(dev)) {
         uint8_t c;
-        // Read until the FIFO is empty
         while (uart_fifo_read(dev, &c, 1) == 1) {
-            push_rx_cmd_buff(&isr_rx_buff, c);
+            push_rx_cmd_buff(&ctx->rx_buff, c);
             
-            // If the TAB machine just finished a packet, queue it up!
-            if (isr_rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
-                // Push to thread, drop packet if queue is full (K_NO_WAIT in ISR)
-                k_msgq_put(&rx_cmd_queue, &isr_rx_buff, K_NO_WAIT);
-                clear_rx_cmd_buff(&isr_rx_buff); // Reset for the next incoming command
+            if (ctx->rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
+                // Packet finished! Throw it in the central queue
+                k_msgq_put(&rx_cmd_queue, &ctx->rx_buff, K_NO_WAIT);
+                clear_rx_cmd_buff(&ctx->rx_buff); 
             }
         }
     }
 }
 
-/* 3. Command Processing Thread */
+// Hardware Init Helper
+void init_all_uarts(void) {
+    uart_lanes[0].dev = uart_gnd_dev;
+    uart_lanes[1].dev = uart_com_dev;
+    uart_lanes[2].dev = uart_pay_dev;
+    uart_lanes[3].dev = uart_ext_dev;
+
+    for (int i = 0; i < 4; i++) {
+        uart_lane_ctx_t *ctx = &uart_lanes[i];
+        clear_rx_cmd_buff(&ctx->rx_buff);
+
+        if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
+            uart_irq_callback_user_data_set(ctx->dev, generic_uart_cb, ctx);
+            uart_irq_rx_enable(ctx->dev);
+        }
+    }
+}
+
+// Command processing thread
 void cmd_processor_entry(void) {
     rx_cmd_buff_t local_rx;
     tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
@@ -54,32 +90,34 @@ void cmd_processor_entry(void) {
                 k_sem_give(&com_awake_sem);
             }
 
+            // Execute logic
             reply(&local_rx, &local_tx); 
             
+            // If the parser generated a response, route it out!
             if (!local_tx.empty) {
-                tx_usart1(&local_tx); 
+                route_tx_packet(&local_tx); 
             }
         }
     }
 }
 
-/* Define the thread: Stack size 1024, Priority 5 */
+// Define the thread: Stack size 1024, Priority 5
 K_THREAD_DEFINE(cmd_processor_tid, 1024, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
 
 int main(void) {
     uint32_t dtr = 0;
     int usb_err = -1;
 
-    /* 1. Initialize Status LED */
+    // Initialize Status LED
     if (device_is_ready(led.port)) {
         gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
     }
 
-    /* 2. Boot the USB Console */
+    // Boot the USB Console
     if (device_is_ready(console_dev)) {
         usb_err = usb_enable(NULL);
         if (usb_err == 0) {
-            int timeout = 25; /* Wait up to 2.5 seconds for PC to connect */
+            int timeout = 25; // 2.5 sec delay
             while (!dtr && timeout > 0) {
                 uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
                 k_msleep(100);
@@ -88,81 +126,19 @@ int main(void) {
         }
     }
 
-    /* Initialize ISR state machine */
-    clear_rx_cmd_buff(&isr_rx_buff);
+    // Boot the unified UART pipelines
+    init_all_uarts();
 
-    /* Configure UART Interrupts */
-    if (device_is_ready(uart1_dev)) {
-        uart_irq_callback_user_data_set(uart1_dev, uart1_cb, NULL);
-        uart_irq_rx_enable(uart1_dev);
-    }
-
-    /* Turn on COM and wait for it */
+    // Pre-emptively turn on COM, and wait for it to respond
     power_on_com();
-    
-    // Note: check_com_online needs a rewrite (see below)
     check_com_online(); 
 
-    /* Main Flight Loop (Heartbeat / Watchdog) */
+    // Main Flight Loop (Heartbeat / Watchdog)
     while (1) {
         printk("CDH Heartbeat - System Nominal.\n");
         gpio_pin_toggle_dt(&led);
-        k_msleep(1000); // Main thread just sleeps and kicks the dog now
+        k_msleep(1000); 
     }
     
     return 0;
 }
-
-
-// // cdh_main.h
-// // CDH main applications
-// //
-// // Written by Jack Rathert
-// // Other contributors: Bradley Denby, Chad Taylor, Alok Anand
-// //
-// // See the top-level LICENSE file for the license.
-
-// // Includes for standard libs, BSP, and common TAB command parsing
-// #include <stddef.h> // size_t
-// #include <stdint.h> // uint8_t, uint32_t
-// #include <zephyr/kernel.h>
-// #include <cdh.h>    // CDH header
-// #include <tab.h>    // TAB header
-
-// // ========== Super Loop ========== //
-// int main(void) {
-
-//   // MCU initialization //
-//   init_clock(); // HSE 32 MHz
-//   init_leds();
-//   init_uart(); // shared UART to COM (SP26 CDH 0.1.0)
-//   init_gpio();
-
-//   // init UART for control of COM/PAY
-//   rx_cmd_buff_t rx_cmd_buff = {.size=CMD_MAX_LEN, .route_id=CDH};
-//   clear_rx_cmd_buff(&rx_cmd_buff);
-//   tx_cmd_buff_t tx_cmd_buff = {.size=CMD_MAX_LEN};
-//   clear_tx_cmd_buff(&tx_cmd_buff);
-
-// // turn on radio front end by default
-//   power_on_com(); // enable com pcb power off the rip
-  
-//   // wait for com to wake up and respond
-//   check_com_online(&rx_cmd_buff, &tx_cmd_buff);
-
-//   // clean up before entering main loop
-//   clear_rx_cmd_buff(&rx_cmd_buff);
-
-//   // safe to enable rf frontend now
-//   // com_enable_rf(&rx_cmd_buff, &tx_cmd_buff);
-
-//   com_start_demo(&rx_cmd_buff, &tx_cmd_buff);
-
-//   // UART Control Loop //
-//   while(1) {
-//     rx_usart1(&rx_cmd_buff);           // Collect command bytes
-//     reply(&rx_cmd_buff, &tx_cmd_buff); // Command reply logic
-//     tx_usart1(&tx_cmd_buff);           // Send a response if any
-//   }
-//   return 0;
-// }
