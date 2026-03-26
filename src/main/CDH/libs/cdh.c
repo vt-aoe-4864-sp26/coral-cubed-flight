@@ -135,8 +135,11 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 void init_clock(void) {} // Clock is initialized by Zephyr devicetree
 
 void init_leds(void) {
-  gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
-  gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+    gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    
+    // work item init
+    k_work_init(&blink_demo_work, blink_demo_handler);
 }
 
 void init_uart(void) {} // Handled in cdh_main.c now
@@ -194,16 +197,7 @@ void power_on_pay(){ gpio_pin_set_dt(&pay_en_pin, 1); }
 void power_off_pay(){ gpio_pin_set_dt(&pay_en_pin, 0); }
 
 void cdh_blink_demo(void){
-  for(int k = 0; k < 20; k++) {
-    k_msleep(250);
-    gpio_pin_toggle_dt(&led1);
-    gpio_pin_toggle_dt(&led2);
-  }
-  for(int k = 0; k < 20; k++) {
-    k_msleep(100);
-    gpio_pin_toggle_dt(&led1);
-    gpio_pin_toggle_dt(&led2);
-  }  
+  k_work_submit(&blink_demo_work);
 }
 
 // ========== UART Commands to COM ========== //
