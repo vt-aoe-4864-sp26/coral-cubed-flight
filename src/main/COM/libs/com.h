@@ -1,3 +1,4 @@
+// com.h
 #ifndef COM_H
 #define COM_H
 
@@ -33,9 +34,8 @@ void cdh_disable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_blink_demo(void);
 void cdh_blink_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
-void rx_uart(rx_cmd_buff_t* rx_cmd_buff_o);
 void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
-void tx_uart(tx_cmd_buff_t* tx_cmd_buff_o);
+void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o);
 
 void run_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void flash_erase_page(uint32_t page);
