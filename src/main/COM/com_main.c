@@ -91,46 +91,39 @@ int main(void) {
     init_leds();
     init_gpio();
 
-    // Boot the USB Console (Ground Link)
     if (!device_is_ready(uart_gnd_dev)) {
-        // TRAP 1: Device tree failed to bind the CDC ACM driver
         while(1) {
             gpio_pin_toggle_dt(&led2);
-            k_msleep(50); // Furious hyper-blinking
+            k_msleep(50); 
         }
     }
 
     int err = usb_enable(NULL);
     if (err != 0) {
-        // TRAP 2: USB failed to initialize (usually a clock or memory issue)
         while(1) {
             gpio_pin_toggle_dt(&led2);
-            k_msleep(250); // Medium-fast blinking
+            k_msleep(250); 
         }
     }
 
-    // If we make it here, the software successfully turned on the USB hardware!
+    // Wait for the host PC to open the COM port
     int timeout = 100; // 10 seconds to open terminal
     while (!dtr && timeout > 0) {
         uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
         k_msleep(100);
         timeout--;
-        gpio_pin_toggle_dt(&led1); // Pulse LED1 while waiting for terminal
+        gpio_pin_toggle_dt(&led1); 
     }
     
-    gpio_pin_set_dt(&led1, 1); // Go solid solid once connected (or timed out)
-    printk("===========================\n");
-    printk(" COM USB Console Live\n");
-    printk("===========================\n");
-    printk("COM USB Live\n");
+    gpio_pin_set_dt(&led1, 1); // Solid LED1 when connected
 
     // Boot ISR pipelines
     init_all_uarts();
-    printk("COM UART Live\n");
 
     // Main Status Loop
     while (1) {
-        printk("COM Heartbeat.\n");
+        // Toggle LED2 for a silent heartbeat since printk is gone
+        gpio_pin_toggle_dt(&led2);
         k_msleep(2000); 
     }
     
