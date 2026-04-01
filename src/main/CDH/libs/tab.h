@@ -21,7 +21,6 @@
 #define START_BYTE_0 ((const uint8_t)0x22) // static start byte
 #define START_BYTE_1 ((const uint8_t)0x69) // static start byte
 
-
 // Opcodes
 #define COMMON_ACK_OPCODE                   ((uint8_t)0x10)
 #define COMMON_NACK_OPCODE                  ((uint8_t)0xff)
@@ -116,6 +115,9 @@ void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o);
 // Clears tx_cmd_buff data and resets state and indices //
 void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
 
+// Logs a message ID so the board knows to expect an ACK for it
+void tab_track_outgoing_id(uint16_t msg_id);
+
 // Protocol functions
 
 // Attempts to push byte to end of rx_cmd_buff //
@@ -126,7 +128,6 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 
 // Attempts to pop byte from beginning of tx_cmd_buff //
 uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
-
 
 // custom routing functions
 

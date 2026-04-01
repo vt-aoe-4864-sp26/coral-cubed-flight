@@ -20,7 +20,6 @@
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
-// Pull GPIO specs directly from the nrf_radio_fem node in the devicetree
 #define FEM_NODE DT_NODELABEL(nrf_radio_fem)
 static const struct gpio_dt_spec fem_tx_en = GPIO_DT_SPEC_GET(FEM_NODE, tx_en_gpios);
 static const struct gpio_dt_spec fem_rx_en = GPIO_DT_SPEC_GET(FEM_NODE, rx_en_gpios);
@@ -45,10 +44,9 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
   switch(var_code) {
     case VAR_CODE_ALIVE:
       if (*val_ptr == 0x01){
-        gpio_pin_set_dt(&led2, 1); // toggle led2 when connected
+        gpio_pin_set_dt(&led2, 1); 
         return 1;
       } 
-
       return 0;
 
     case VAR_CODE_PAY_EN:
@@ -69,11 +67,6 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       k_work_submit(&blink_demo_work);
       return 1;
 
-    // case VAR_CODE_BLINK_CDH:
-    //   cdh_blink_demo(rx_cmd_buff, tx_cmd_buff);
-    //   return 1;
-
-    // FEM Control Handlers
     case VAR_CODE_RF_EN:
       if (*val_ptr == VAR_ENABLE) enable_rf();
       else if (*val_ptr == VAR_DISABLE) disable_rf();
@@ -93,7 +86,6 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
   }
 }
 
-// Background Work Handler for LEDs
 static void blink_demo_handler(struct k_work *work) {
   for(int k = 0; k < 20; k++) {
     k_msleep(250);
@@ -109,25 +101,19 @@ static void blink_demo_handler(struct k_work *work) {
   gpio_pin_set_dt(&led2, 0);
 }
 
-// Background Work Handler for the Master Demo
 static void run_demo_handler(struct k_work *work) {
-  // Create localized, thread-safe buffers for the background worker
   tx_cmd_buff_t demo_tx = {.size=CMD_MAX_LEN};
   clear_tx_cmd_buff(&demo_tx);
   rx_cmd_buff_t dummy_rx = {.route_id = COM, .bus_msg_id = 0};
 
-  k_work_submit(&blink_demo_work); // Trigger COM blink
-
-  // Because this is in a background thread, sleeping is totally safe now!
+  k_work_submit(&blink_demo_work); 
   k_msleep(1000); 
 
-  // Build and route the CDH blink command directly
   cdh_blink_demo(&dummy_rx, &demo_tx);
   route_tx_packet(&demo_tx);
 
   k_msleep(1000);
 
-  // Cycle the FEM Radio
   enable_rf();
   k_msleep(1000);
   enable_rx();
@@ -137,34 +123,27 @@ static void run_demo_handler(struct k_work *work) {
   disable_tx();
   disable_rf();
 
-  // Build and route the Payload enable command
   cdh_enable_pay(&dummy_rx, &demo_tx);
   route_tx_packet(&demo_tx);
 }
 
-// Hardware Initialization
 void init_leds(void) {
   gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
   gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
   
-  // Register the workers
   k_work_init(&blink_demo_work, blink_demo_handler);
   k_work_init(&run_demo_work, run_demo_handler);
 }
 
 void init_gpio(void) {
-  // Initialize FEM GPIOs if the devicetree sees them
   if(device_is_ready(fem_pdn.port)) {
     gpio_pin_configure_dt(&fem_pdn, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&fem_tx_en, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&fem_rx_en, GPIO_OUTPUT_INACTIVE);
-    gpio_pin_configure_dt(&fem_mode, GPIO_OUTPUT_INACTIVE); // Inactive = low gain, Active = high gain
+    gpio_pin_configure_dt(&fem_mode, GPIO_OUTPUT_INACTIVE); 
   }
 }
 
-// ========== RF FEM Control Functions ========== //
-
-// PDN (Power Down): Active High powers the chip ON for the nRF21540
 void enable_rf(void) { gpio_pin_set_dt(&fem_pdn, 1); }
 void disable_rf(void) { 
   gpio_pin_set_dt(&fem_pdn, 0); 
@@ -172,14 +151,12 @@ void disable_rf(void) {
   gpio_pin_set_dt(&fem_rx_en, 0); 
 }
 
-// TX EN: Enable TX path (automatically disables RX path to prevent hardware conflicts)
 void enable_tx(void) { 
   gpio_pin_set_dt(&fem_rx_en, 0); 
   gpio_pin_set_dt(&fem_tx_en, 1); 
 }
 void disable_tx(void) { gpio_pin_set_dt(&fem_tx_en, 0); }
 
-// RX EN: Enable RX path (automatically disables TX path)
 void enable_rx(void) { 
   gpio_pin_set_dt(&fem_tx_en, 0); 
   gpio_pin_set_dt(&fem_rx_en, 1); 
@@ -188,10 +165,29 @@ void disable_rx(void) { gpio_pin_set_dt(&fem_rx_en, 0); }
 
 // ========== UART Routing ========== //
 
-void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
-  if(rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {                                                  
-    write_reply(rx_cmd_buff_o, tx_cmd_buff_o);         
-  }                                                    
+// NEW Router Function - Replaces reply()
+void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
+  if(rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
+    
+    // Extract destination ID from the high nibble
+    uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
+
+    // If it's for us, handle it natively.
+    if (dest_id == COM) {
+      write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
+    } 
+    // Otherwise, we are a transparent router. Copy bytes exactly as they arrived.
+    else {
+      for(size_t i = 0; i < rx_cmd_buff_o->end_index; i++) {
+        tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
+      }
+      tx_cmd_buff_o->start_index = 0;
+      tx_cmd_buff_o->end_index = rx_cmd_buff_o->end_index;
+      tx_cmd_buff_o->empty = 0;
+      
+      clear_rx_cmd_buff(rx_cmd_buff_o);
+    }
+  }
 }
 
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
@@ -203,6 +199,7 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
   switch (dest_id) {
       case GND: target_dev = uart_gnd_dev; break; 
       case CDH: target_dev = uart_cdh_dev; break; 
+      case PLD: target_dev = uart_cdh_dev; break; // PLD is routed through CDH from here
       default:  return; 
   }
 

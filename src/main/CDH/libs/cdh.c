@@ -22,7 +22,6 @@ const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 static const struct gpio_dt_spec com_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(com_en), gpios);
 static const struct gpio_dt_spec pay_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(pay_en), gpios);
 
-// Expose the UART devices from main for the TX router
 extern const struct device *uart_gnd_dev;
 extern const struct device *uart_com_dev;
 extern const struct device *uart_pay_dev;
@@ -36,21 +35,16 @@ K_SEM_DEFINE(com_awake_semaphore, 0, 1)
 // ========== Workqueue Handling ========== //
 
 static void blink_demo_handler(struct k_work *work) {
-    // slow
     for(int k = 0; k < 20; k++) {
         k_msleep(250);
         gpio_pin_toggle_dt(&led1);
         gpio_pin_toggle_dt(&led2);
     }
-
-    // fast
     for(int k = 0; k < 20; k++) {
         k_msleep(100);
         gpio_pin_toggle_dt(&led1);
         gpio_pin_toggle_dt(&led2);
     }
-    
-    // Leave off with led1 solid again 
     gpio_pin_set_dt(&led1, 1);
     gpio_pin_set_dt(&led2, 0);
 }
@@ -58,16 +52,12 @@ static void blink_demo_handler(struct k_work *work) {
 // ========== Tab Handling ========== //
 
 int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
-  if(common_data_buff_i.end_index < 2) {
-    return 0; 
-  }
+  if(common_data_buff_i.end_index < 2) return 0; 
 
   uint8_t var_code = common_data_buff_i.data[0];
   uint8_t var_len  = common_data_buff_i.data[1];
 
-  if(common_data_buff_i.end_index < (size_t)(2 + var_len)) {
-    return 0; 
-  }
+  if(common_data_buff_i.end_index < (size_t)(2 + var_len)) return 0; 
 
   uint8_t* val_ptr = &common_data_buff_i.data[2];
 
@@ -133,17 +123,15 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 
 // ========== Board initialization functions ========== //
 
-void init_clock(void) {} // Clock is initialized by Zephyr devicetree
+void init_clock(void) {} 
 
 void init_leds(void) {
     gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
     gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
-    
-    // work item init
     k_work_init(&blink_demo_work, blink_demo_handler);
 }
 
-void init_uart(void) {} // Handled in cdh_main.c now
+void init_uart(void) {} 
 
 void init_gpio(void){
   gpio_pin_configure_dt(&pay_en_pin, GPIO_OUTPUT_INACTIVE);
@@ -152,40 +140,51 @@ void init_gpio(void){
 
 // ========== UART Communication functions ========== //
 
-void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
-  if(rx_cmd_buff_o->state==RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
-    write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
+// NEW Router Function - Replaces reply()
+void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
+  if(rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
+    
+    // Extract destination ID from the high nibble
+    uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
+
+    // If it's for us, handle it natively.
+    if (dest_id == CDH) {
+      write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
+    } 
+    // Otherwise, we act as a transparent router (e.g., GND -> CDH -> PLD)
+    else {
+      for(size_t i = 0; i < rx_cmd_buff_o->end_index; i++) {
+        tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
+      }
+      tx_cmd_buff_o->start_index = 0;
+      tx_cmd_buff_o->end_index = rx_cmd_buff_o->end_index;
+      tx_cmd_buff_o->empty = 0;
+      
+      clear_rx_cmd_buff(rx_cmd_buff_o);
+    }
   }
 }
 
-// The Unified TX Router
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
   if (tx_cmd_buff_o->empty) return;
 
-  // Extract destination ID from the high nibble of the TAB route byte
   uint8_t dest_id = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
   const struct device *target_dev = NULL;
 
-  // Match the route ID to the Zephyr device pointer
   switch (dest_id) {
-      case GND: target_dev = uart_gnd_dev; break; 
+      case GND: target_dev = uart_gnd_dev; break; // (Assuming alias points to COM via devicetree)
       case COM: target_dev = uart_com_dev; break; 
       case PLD: target_dev = uart_pay_dev; break; 
-      case CDH: target_dev = uart_ext_dev; break; // Fallback / Debug
-      default:  return; // Invalid route
+      case CDH: target_dev = uart_ext_dev; break; 
+      default:  return; 
   }
 
-  // Ensure the device exists before blasting bytes
   if (target_dev != NULL && device_is_ready(target_dev)) {
       while(!(tx_cmd_buff_o->empty)) {
           uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
           uart_poll_out(target_dev, b);
       }
-      // Toggle LEDs on successful TX
-      // gpio_pin_toggle_dt(&led1);
-      // gpio_pin_toggle_dt(&led2);
   } else {
-      // Clear the buffer anyway if hardware is offline so we don't lock up
       clear_tx_cmd_buff(tx_cmd_buff_o); 
   }
 }
@@ -197,9 +196,7 @@ void power_off_com(){ gpio_pin_set_dt(&com_en_pin, 0); }
 void power_on_pay(){ gpio_pin_set_dt(&pay_en_pin, 1); }
 void power_off_pay(){ gpio_pin_set_dt(&pay_en_pin, 0); }
 
-void cdh_blink_demo(void){
-  k_work_submit(&blink_demo_work);
-}
+void cdh_blink_demo(void){ k_work_submit(&blink_demo_work); }
 
 // ========== UART Commands to COM ========== //
 
@@ -209,16 +206,13 @@ void check_com_online(void) {
     rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
     
     while(1) {
-        // 1. Turn LED on to indicate we are sending a ping
         gpio_pin_set_dt(&led2, 1); 
 
         uint8_t my_payload[] = {VAR_CODE_ALIVE, 0x01, 0x01};
         msg_to_com(&dummy_rx, &local_tx, COMMON_DATA_OPCODE, my_payload, 3);
         route_tx_packet(&local_tx); 
 
-        // 2. Wait for the ACK
         if (k_sem_take(&com_awake_semaphore, K_MSEC(500)) == 0) {
-            // CONNECTED! Do a strobe
             for(int i = 0; i < 6; i++) {
                 gpio_pin_toggle_dt(&led1);
                 gpio_pin_toggle_dt(&led2);
@@ -227,9 +221,8 @@ void check_com_online(void) {
             break; 
         }
         
-        // 3. COM didn't answer. Turn LED off and wait a moment so we can see it blink
         gpio_pin_set_dt(&led2, 0); 
-        k_msleep(500); // 500ms ON / 500ms OFF = perfect 1Hz blink
+        k_msleep(500); 
     }
     
     gpio_pin_set_dt(&led1, 0);
@@ -271,7 +264,6 @@ void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
-// Bootloader opcode functions
 int handle_bootloader_erase(void){ return 1; }
 int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff){ return 1; }
 int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff){ return 1; }
