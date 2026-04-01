@@ -87,8 +87,9 @@ void cmd_processor_entry(void) {
                 k_sem_give(&com_awake_semaphore);
             }
 
-            // Execute logic
-            reply(&local_rx, &local_tx); 
+            // Replaced reply() with the new routing logic
+            // This will parse CDH messages natively, or pass PLD messages through transparently
+            process_rx_packet(&local_rx, &local_tx); 
             
             // If the parser generated a response, route it out!
             if (!local_tx.empty) {
@@ -125,18 +126,19 @@ int main(void) {
             }
         }
     }
-    printk("Console Live");
+    printk("Console Live\n");
+    
     // Boot the unified UART pipelines
     init_all_uarts();
-    printk("UART Live");
+    printk("UART Live\n");
 
     // Pre-emptively turn on COM, and wait for it to respond
     k_msleep(10000);
     power_on_com();
-    printk("COMEN High");
+    printk("COMEN High\n");
     check_com_online();
 
-    printk("COM is online! Triggering Master Demo...");
+    printk("COM is online! Triggering Master Demo...\n");
     
     tx_cmd_buff_t local_demo_tx = {.size=CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_demo_tx);

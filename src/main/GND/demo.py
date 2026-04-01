@@ -83,52 +83,52 @@ class PCB:
 
     # opcodes
 
-    def common_ack(self):
-        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_ack(self, dst=COM):
+        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def common_nack(self):
-        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_nack(self, dst=COM):
+        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def common_debug(self, message: str):
-        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_debug(self, message: str, dst=COM):
+        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, GND, dst)
         cmd.common_debug(message)
         self._send_and_wait(cmd)
 
-    def common_data(self, data: list):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+    def common_data(self, data: list, dst=COM):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, dst)
         cmd.common_data(data)
         self._send_and_wait(cmd)
 
-    def bootloader_ack(self):
-        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_ack(self, dst=COM):
+        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def bootloader_nack(self):
-        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_nack(self, dst=COM):
+        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def bootloader_ping(self):
-        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_ping(self, dst=COM):
+        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def bootloader_erase(self):
-        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_erase(self, dst=COM):
+        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
 
-    def bootloader_write_page(self, page_number: int, page_data: list):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_write_page(self, page_number: int, page_data: list, dst=COM):
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, GND, dst)
         cmd.bootloader_write_page(page_number=page_number, page_data=page_data)
         self._send_and_wait(cmd)
 
-    def bootloader_write_page_addr32(self, addr: int, page_data: list):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_write_page_addr32(self, addr: int, page_data: list, dst=COM):
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, GND, dst)
         cmd.bootloader_write_page_addr32(addr=addr, page_data=page_data)
         self._send_and_wait(cmd)
 
-    def bootloader_jump(self):
-        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, COM)
+    def bootloader_jump(self, dst=COM):
+        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
     
     def send_alive(self):
@@ -148,11 +148,19 @@ class PCB:
             sys.exit(1)
         
 
-
+    # ==== Updated to route directly to CDH ==== #
     def cdh_enable_pay(self, var_code_pay_en=0x02, var_enable=0x01):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        # Targeting CDH directly. COM will act as a transparent router!
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
         cmd.common_data([var_code_pay_en, 0x01, var_enable])
         self._send_and_wait(cmd)
+
+    def cdh_blink_demo(self, var_code_blink_cdh = 0x06):
+        # Targeting CDH directly. COM will act as a transparent router!
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd.common_data([var_code_blink_cdh, 0x01, 0x01])
+        self._send_and_wait(cmd)
+    # ========================================== #
 
     def enable_rf(self, var_code_rf_en=0x03, var_enable=0x01):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
@@ -168,17 +176,11 @@ class PCB:
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
         cmd.common_data([var_code_rf_rx, 0x01, 0x01]) # val byte ignored by com.c
         self._send_and_wait(cmd)
-
-    def cdh_blink_demo(self, var_code_blink_cdh = 0x06):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
-        cmd.common_data([0x06, 0x01, 0x01])
-        self._send_and_wait(cmd)
     
     def com_blink_demo(self, var_code_blink_cdh = 0x07):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
         cmd.common_data([0x07, 0x01, 0x01])
         self._send_and_wait(cmd)
-
 
 
 if __name__ == '__main__':
@@ -210,7 +212,6 @@ if __name__ == '__main__':
         time.sleep(15)
         
         board.cdh_blink_demo()
-
         print("blinked cdh")
 
         # test common debug
@@ -219,7 +220,7 @@ if __name__ == '__main__':
         print("--- testing routing to cdh & hardware enables ---")
 
         # enable payload
-        print("enabling payload (should route to cdh)...")
+        print("enabling payload (should route transparently through com to cdh)...")
         board.cdh_enable_pay()
 
         # enable com rf frontend

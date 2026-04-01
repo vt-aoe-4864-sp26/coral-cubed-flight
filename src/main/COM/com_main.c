@@ -5,7 +5,7 @@
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
 #include <com.h>
-#include <zephyr/usb/usb_device.h>
+
 // Map our 2 UART lanes
 const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
 const struct device *uart_cdh_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // Hardware to CDH
@@ -71,9 +71,8 @@ void cmd_processor_entry(void) {
 
     while (1) {
         if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0) {
-            
-            // Because COM automatically ACKs, we pass it down
-            reply(&local_rx, &local_tx); 
+        
+            process_rx_packet(&local_rx, &local_tx); 
             
             if (!local_tx.empty) {
                 route_tx_packet(&local_tx); 

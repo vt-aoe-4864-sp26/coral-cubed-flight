@@ -3,7 +3,7 @@
 # Python classes, functions, and variables supporting usage of TAB
 #
 # Written by Bradley Denby
-# Other contributors: Chad Taylor
+# Other contributors: Chad Taylor, Jack Rathert
 #
 # See the top-level LICENSE file for the license.
 
@@ -96,6 +96,7 @@ class RxCmdBuff:
     self.state = RxCmdBuffState.START_BYTE_0
     self.start_index = 0
     self.end_index = 0
+    self.bus_msg_id = 0
     self.data = [0x00]*CMD_MAX_LEN
 
   def clear(self):
@@ -134,6 +135,7 @@ class RxCmdBuff:
       self.state = RxCmdBuffState.MSG_ID_MSB
     elif self.state == RxCmdBuffState.MSG_ID_MSB:
       self.data[MSG_ID_MSB_INDEX] = b
+      self.bus_msg_id = (self.data[MSG_ID_MSB_INDEX] << 8) | self.data[MSG_ID_LSB_INDEX]
       self.state = RxCmdBuffState.ROUTE
     elif self.state == RxCmdBuffState.ROUTE:
       self.data[ROUTE_INDEX] = b
@@ -182,14 +184,14 @@ class TxCmdBuff:
       self.data[MSG_ID_LSB_INDEX] = rx_cmd_buff.data[MSG_ID_LSB_INDEX]
       self.data[MSG_ID_MSB_INDEX] = rx_cmd_buff.data[MSG_ID_MSB_INDEX]
       self.data[ROUTE_INDEX] = \
-       (0x0f & rx_cmd_buff.data[ROUTE_INDEX]) << 4 | \
-       (0xf0 & rx_cmd_buff.data[ROUTE_INDEX]) >> 4;
-      if rx_cmd_buff.data[OPCODE_INDEX] == COMMON_ACK_OPCODE:
-        self.data[MSG_LEN_INDEX] = 0x06
-        self.data[OPCODE_INDEX] = COMMON_ACK_OPCODE
-      elif rx_cmd_buff.data[OPCODE_INDEX] == COMMON_NACK_OPCODE:
-        self.data[MSG_LEN_INDEX] = 0x06
-        self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
+      (0x0f & rx_cmd_buff.data[ROUTE_INDEX]) << 4 | \
+      (0xf0 & rx_cmd_buff.data[ROUTE_INDEX]) >> 4;
+      
+      # Parity with C: Prevent ACK loops by silently consuming ACKs and NACKs
+      if rx_cmd_buff.data[OPCODE_INDEX] in [COMMON_ACK_OPCODE, COMMON_NACK_OPCODE]:
+        self.empty = True 
+        return
+        
       elif rx_cmd_buff.data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE:
         self.data[MSG_LEN_INDEX] = rx_cmd_buff.data[MSG_LEN_INDEX]
         self.data[OPCODE_INDEX] = COMMON_DEBUG_OPCODE
@@ -224,12 +226,16 @@ class TxCmdBuff:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
       elif rx_cmd_buff.data[OPCODE_INDEX] == \
-       BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE:
+      BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
       elif rx_cmd_buff.data[OPCODE_INDEX] == BOOTLOADER_JUMP_OPCODE:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
+        
+      # Mark buffer as ready to send
+      self.empty = False
+      self.end_index = self.data[MSG_LEN_INDEX] + 3
 
 # Helper functions
 
@@ -334,10 +340,6 @@ def cmd_bytes_to_str(data):
   return (cmd_str+pld_str)
 
 ## A Python class for easily constructing commands to be placed in a TX buffer
-##   TODO: a "valid" state variable indicating whether data is a valid command
-##   This valid state variable is important for commands with payloads that are
-##   constructed in two steps, because between the two steps they can have an
-##   invalid message length (i.e. length 6 when the payload must be at least 1)
 class TxCmd:
   def __init__(self, opcode, hw_id, msg_id, src, dst):
     # set up data buffer
