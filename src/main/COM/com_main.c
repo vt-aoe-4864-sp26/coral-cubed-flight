@@ -72,7 +72,7 @@ void cmd_processor_entry(void) {
     while (1) {
         if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0) {
         
-            process_rx_packet(&local_rx, &local_tx); 
+            route_rx_packet(&local_rx, &local_tx); 
             
             if (!local_tx.empty) {
                 route_tx_packet(&local_tx); 

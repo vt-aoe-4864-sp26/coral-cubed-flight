@@ -166,7 +166,7 @@ void disable_rx(void) { gpio_pin_set_dt(&fem_rx_en, 0); }
 // ========== UART Routing ========== //
 
 // NEW Router Function - Replaces reply()
-void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
+void route_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
   if(rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
     
     // Extract destination ID from the high nibble
