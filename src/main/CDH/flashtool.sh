@@ -28,13 +28,12 @@ fi
 # ─── Flash ────────────────────────────────────────────────────────────────────
 echo "Flashing CDH with st-flash..."
 
-# st-flash writes the raw binary to the base flash address 0x08000000
-# The --reset flag ensures the board reboots and runs your code immediately
-st-flash --reset write "$PROJECT_ROOT/build_cdh/zephyr/zephyr.bin" 0x08000000
+if [ "$SKIP_FLASH" = false ]; then
+    st-flash --reset write "$PROJECT_ROOT/build_cdh/zephyr/zephyr.bin" 0x08000000
 
-if [ $? -ne 0 ]; then
-    echo "Flash failed."
-    exit 1
+    if [ $? -ne 0 ]; then
+        echo "Flash failed."
+        exit 1
+    fi
 fi
-
 echo "Flash successful."
