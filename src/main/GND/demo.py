@@ -17,7 +17,7 @@ from utils.tab import *
 
 class PCB:
     def __init__(self, port=None, BAUD=None, HWID=None, msgid=None):
-        self.dev = port if port is not None else '/dev/ttyUSB0'
+        self.dev = port if port is not None else '/dev/ttyACM0'
         self.BAUD = BAUD if BAUD is not None else 115200
         self.HWID = HWID if HWID is not None else 0xccc3
         self.msgid = msgid if msgid is not None else 0x0000
@@ -185,7 +185,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyUSB0' # default
+    port = '/dev/ttyACM0' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
