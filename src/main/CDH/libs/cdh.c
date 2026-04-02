@@ -259,7 +259,7 @@ void cdh_coral_infer(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
 
 // ========== UART Commands to COM ========== //
 void check_com_online(void) {
-    tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
+    static tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_tx);
     rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
     

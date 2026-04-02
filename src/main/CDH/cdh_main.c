@@ -57,7 +57,7 @@ int main(void) {
     check_com_online();
     printk("Handshake Complete! COM is online.\n");
     
-    tx_cmd_buff_t local_demo_tx = {.size=CMD_MAX_LEN};
+    static tx_cmd_buff_t local_demo_tx = {.size=CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_demo_tx);
     
     // rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0}; 
