@@ -92,7 +92,7 @@ void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 // ========== UART Commands to Payload (Coral) ========== //
 void cdh_coral_wake(uint8_t val);
 void cdh_coral_cam_on(uint8_t val);
-void cdh_coral_infer(uint8_t val);
+void cdh_coral_infer(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff, uint8_t val);
 
 // ========== UART Commands to COM ========== //
 void check_com_online(void);

@@ -206,8 +206,8 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
       cdh_coral_cam_on(*val_ptr);
       return 1;
     case VAR_CODE_CORAL_INFER:
-      cdh_coral_infer(*val_ptr);
-      return 1;
+    cdh_coral_infer(rx_cmd_buff, tx_cmd_buff, *val_ptr);
+    return 1;
 
     case VAR_CODE_RF_EN:
       if (*val_ptr == VAR_ENABLE) com_enable_rf(rx_cmd_buff, tx_cmd_buff);
@@ -264,14 +264,14 @@ void cdh_coral_cam_on(uint8_t val){
     route_tx_packet(&local_tx);
 }
 
-void cdh_coral_infer(uint8_t val){
-    tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
-    clear_tx_cmd_buff(&local_tx);
-    rx_cmd_buff_t dummy_rx = {.route_id = CDH, .bus_msg_id = 0};
-
+void cdh_coral_infer(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff, uint8_t val){
+    // Raw byte to Coral over PAY UART
+    if (device_is_ready(uart_pay_dev)) {
+        uart_poll_out(uart_pay_dev, val ? 0x31 : 0x30);
+    }
+    // Ack back to ground
     uint8_t my_payload[] = {VAR_CODE_CORAL_INFER, 0x01, val};
-    msg_to_pay(&dummy_rx, &local_tx, COMMON_DATA_OPCODE, my_payload, 3);
-    route_tx_packet(&local_tx);
+    msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
 // ========== UART Commands to COM ========== //
