@@ -39,8 +39,10 @@ K_EVENT_DEFINE(app_events);
 
 // ========== Hardware Init ========== //
 void init_leds(void) {
-    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
-    gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    if(device_is_ready(led1.port)) {
+        gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+        gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    }
 }
 
 void init_gpio(void) {
@@ -66,7 +68,6 @@ static uart_lane_ctx_t uart_lanes[2] = {
 static void generic_uart_callback(const struct device *dev, void *user_data) {
     uart_lane_ctx_t *ctx = (uart_lane_ctx_t *)user_data;
     if (!uart_irq_update(dev)) return;
-
     if (uart_irq_rx_ready(dev)) {
         uint8_t c;
         while (uart_fifo_read(dev, &c, 1) == 1) {
@@ -150,7 +151,7 @@ K_THREAD_DEFINE(app_tid, 1024, app_thread_entry, NULL, NULL, NULL, 7, 0, 0);
 
 
 // ========== Routing Logic ========== //
-void route_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
+void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
     if(rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
         uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
 
@@ -186,7 +187,7 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_dev, b);
         }
-        gpio_pin_toggle_dt(&led2);
+        gpio_pin_toggle_dt(&led2); // Flash LED2 on successful route transmission
     } else {
         clear_tx_cmd_buff(tx_cmd_buff_o); 
     }

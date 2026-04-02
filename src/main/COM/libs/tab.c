@@ -14,7 +14,6 @@
 #include <tab.h>    // TAB header
 
 // External handler functions
-
 extern int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 extern int handle_bootloader_erase(void);
 extern int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff);
@@ -22,7 +21,33 @@ extern int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff);
 extern int handle_bootloader_jump(void);
 extern int bootloader_active(void);
 
-// Helper functions
+// ========== Stateful Message Tracking ========== //
+
+#define MAX_PENDING_IDS 16
+static uint16_t pending_tx_ids[MAX_PENDING_IDS] = {0};
+static int pending_tx_active[MAX_PENDING_IDS] = {0};
+
+static void tab_track_outgoing_id(uint16_t msg_id) {
+  for (int i = 0; i < MAX_PENDING_IDS; i++) {
+    if (!pending_tx_active[i]) {
+      pending_tx_ids[i] = msg_id;
+      pending_tx_active[i] = 1;
+      return;
+    }
+  }
+}
+
+static int check_and_clear_pending_id(uint16_t msg_id) {
+  for (int i = 0; i < MAX_PENDING_IDS; i++) {
+    if (pending_tx_active[i] && pending_tx_ids[i] == msg_id) {
+      pending_tx_active[i] = 0; // Clear it
+      return 1; // It was a reply to us
+    }
+  }
+  return 0; // Unsolicited
+}
+
+// ========== Helper functions ========== //
 
 // Clears rx_cmd_buff data and resets state and indices
 void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o) {
@@ -44,7 +69,7 @@ void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
   }
 }
 
-// Protocol functions
+// ========== Protocol functions ========== //
 
 // Attempts to push byte to end of rx_cmd_buff
 void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
@@ -89,7 +114,6 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
       rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] = b;
       
       // piece together the 16-bit id we just heard on the line
-      // ensures monotonic increase across messages - even if not all were targeted at this bus:
       rx_cmd_buff_o->bus_msg_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | 
                                   rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
 
@@ -97,18 +121,9 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
       break;
     case RX_CMD_BUFF_STATE_ROUTE:
       rx_cmd_buff_o->data[ROUTE_INDEX] = b;
-      
-      // grab the high nibble (destination id)
-      uint8_t dest_id = (b & 0xf0) >> 4;
-      
-      // only proceed if the message is for us
-      if(dest_id == rx_cmd_buff_o->route_id) {
-        rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
-      } else {
-        clear_rx_cmd_buff(rx_cmd_buff_o);
-      }
+      rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
       break;
-    case RX_CMD_BUFF_STATE_OPCODE: // no check for valid opcodes (too much)
+    case RX_CMD_BUFF_STATE_OPCODE:
       rx_cmd_buff_o->data[OPCODE_INDEX] = b;
       if(rx_cmd_buff_o->start_index<rx_cmd_buff_o->end_index) {
         rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_PLD;
@@ -121,16 +136,13 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
         rx_cmd_buff_o->data[rx_cmd_buff_o->start_index] = b;
         rx_cmd_buff_o->start_index += 1;
       }
-      // Must move to COMPLETE state immediately if b is the last byte
       if(rx_cmd_buff_o->start_index==rx_cmd_buff_o->end_index) {
         rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_COMPLETE;
       }
       break;
     case RX_CMD_BUFF_STATE_COMPLETE:
-      // If rx_cmd_buff_t holds a complete command, do nothing with new byte b
       break;
     default:
-      // Do nothing by default
       break;
   }
 }
@@ -146,27 +158,35 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
     tx_cmd_buff_o->data[START_BYTE_1_INDEX] = START_BYTE_1;
     tx_cmd_buff_o->data[HWID_LSB_INDEX] = rx_cmd_buff_o->data[HWID_LSB_INDEX];
     tx_cmd_buff_o->data[HWID_MSB_INDEX] = rx_cmd_buff_o->data[HWID_MSB_INDEX];
-    tx_cmd_buff_o->data[MSG_ID_LSB_INDEX] =
-      rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
-    tx_cmd_buff_o->data[MSG_ID_MSB_INDEX] =
-      rx_cmd_buff_o->data[MSG_ID_MSB_INDEX];
+    tx_cmd_buff_o->data[MSG_ID_LSB_INDEX] = rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
+    tx_cmd_buff_o->data[MSG_ID_MSB_INDEX] = rx_cmd_buff_o->data[MSG_ID_MSB_INDEX];
     tx_cmd_buff_o->data[ROUTE_INDEX] =
       (0x0f & rx_cmd_buff_o->data[ROUTE_INDEX]) << 4 |
       (0xf0 & rx_cmd_buff_o->data[ROUTE_INDEX]) >> 4;
 
-    // useful variables
     size_t i = 0;
     common_data_t common_data_buff = {.size=PLD_MAX_LEN};
     int success = 0;
+    int send_reply = 1; // Flag to dictate transmission
 
     switch(rx_cmd_buff_o->data[OPCODE_INDEX]) {
-      case COMMON_ACK_OPCODE:
-        tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-        tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+      case COMMON_ACK_OPCODE: {
+        uint16_t incoming_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | 
+                                rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
+        
+        if (check_and_clear_pending_id(incoming_id)) {
+            // It's a reply to our command. Close the loop silently.
+            send_reply = 0; 
+        } else {
+            // Unsolicited ACK! Treat it as a ping and bounce it back.
+            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
+            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+            send_reply = 1;
+        }
         break;
+      }
       case COMMON_NACK_OPCODE:
-        tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-        tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_NACK_OPCODE;
+        send_reply = 0; // Always consume NACKs quietly to prevent loops
         break;
       case COMMON_DEBUG_OPCODE:
         tx_cmd_buff_o->data[MSG_LEN_INDEX] = rx_cmd_buff_o->data[MSG_LEN_INDEX];
@@ -175,15 +195,13 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
           tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
         }
         break;
-        case COMMON_DATA_OPCODE:
-        // handle common_data
+      case COMMON_DATA_OPCODE:
         for(i=PLD_START_INDEX; i<rx_cmd_buff_o->end_index; i++) {
           common_data_buff.data[i-PLD_START_INDEX] = rx_cmd_buff_o->data[i];
         }
         common_data_buff.end_index = rx_cmd_buff_o->end_index-PLD_START_INDEX;
         success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
         
-        // reply only if a custom message wasn't already built
         if(tx_cmd_buff_o->empty) {
           if(success) {
             tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
@@ -192,6 +210,8 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
             tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
             tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_NACK_OPCODE;
           }
+        } else {
+            send_reply = 1; // Custom payload was built, guarantee transmission
         }
         break;
       case BOOTLOADER_ACK_OPCODE:
@@ -251,14 +271,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
           if(success) {
             tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x0a);
             tx_cmd_buff_o->data[OPCODE_INDEX] = BOOTLOADER_ACK_OPCODE;
-            tx_cmd_buff_o->data[PLD_START_INDEX] =
-              rx_cmd_buff_o->data[PLD_START_INDEX];
-            tx_cmd_buff_o->data[PLD_START_INDEX+1] =
-              rx_cmd_buff_o->data[PLD_START_INDEX+1];
-            tx_cmd_buff_o->data[PLD_START_INDEX+2] =
-              rx_cmd_buff_o->data[PLD_START_INDEX+2];
-            tx_cmd_buff_o->data[PLD_START_INDEX+3] =
-              rx_cmd_buff_o->data[PLD_START_INDEX+3];
+            tx_cmd_buff_o->data[PLD_START_INDEX] = rx_cmd_buff_o->data[PLD_START_INDEX];
+            tx_cmd_buff_o->data[PLD_START_INDEX+1] = rx_cmd_buff_o->data[PLD_START_INDEX+1];
+            tx_cmd_buff_o->data[PLD_START_INDEX+2] = rx_cmd_buff_o->data[PLD_START_INDEX+2];
+            tx_cmd_buff_o->data[PLD_START_INDEX+3] = rx_cmd_buff_o->data[PLD_START_INDEX+3];
           } else {
             tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
             tx_cmd_buff_o->data[OPCODE_INDEX] = BOOTLOADER_NACK_OPCODE;
@@ -288,9 +304,14 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         break;
     }
     
-    tx_cmd_buff_o->end_index = // +((uint8_t)0x03) accounts for 1st 3 bytes
-    (tx_cmd_buff_o->data[MSG_LEN_INDEX]+((uint8_t)0x03));
-    tx_cmd_buff_o->empty = 0;
+    // Process final transmission behavior based on our state tracking
+    if (send_reply) {
+      tx_cmd_buff_o->end_index = (tx_cmd_buff_o->data[MSG_LEN_INDEX]+((uint8_t)0x03));
+      tx_cmd_buff_o->empty = 0;
+    } else {
+      tx_cmd_buff_o->empty = 1;
+    }
+    
     clear_rx_cmd_buff(rx_cmd_buff_o);
   }
 }
@@ -312,7 +333,6 @@ uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o) {
 }
 
 static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
-  
   if(tx->empty) {
     uint8_t local_route_id = COM; // Default to COM's ID
     uint8_t current_msg_id = 0;
@@ -324,11 +344,13 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
         local_route_id = rx->route_id;
     }
 
+    // Automatically log this outgoing ID so the board expects an ACK
+    tab_track_outgoing_id((uint16_t)current_msg_id);
+
     tx->data[START_BYTE_0_INDEX] = START_BYTE_0;
     tx->data[START_BYTE_1_INDEX] = START_BYTE_1;
     tx->data[MSG_LEN_INDEX] = ((uint8_t)6) + pld_len; 
     
-    // Use the actual macros now
     tx->data[HWID_MSB_INDEX] = SAT_HWID_MSB;
     tx->data[HWID_LSB_INDEX] = SAT_HWID_LSB;
 
@@ -346,6 +368,7 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
     tx->empty = 0;
   }
 }
+
 // sends a brand new message to ground
 void msg_to_gnd(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   build_new_msg(GND, rx, tx, opcode, pld, pld_len);

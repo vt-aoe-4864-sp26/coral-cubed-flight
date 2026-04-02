@@ -93,18 +93,8 @@ void init_gpio(void){
 }
 
 int init_usb_console(void) {
-    uint32_t dtr = 0;
     if (device_is_ready(console_dev)) {
-        int usb_err = usb_enable(NULL);
-        if (usb_err == 0) {
-            int timeout = 25; // 2.5 sec delay
-            while (!dtr && timeout > 0) {
-                uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
-                k_msleep(100);
-                timeout--;
-            }
-            return 0; // Success
-        }
+        return usb_enable(NULL); 
     }
     return -1; // Failure
 }
@@ -121,6 +111,9 @@ void init_hardware_uarts(void) {
         if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
             uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
             uart_irq_rx_enable(ctx->dev);
+            printk("Hardware UART %d Bound and Ready.\n", i);
+        } else {
+            printk("WARNING: Hardware UART %d Failed to Bind!\n", i);
         }
     }
 }
@@ -162,10 +155,10 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
   const struct device *target_dev = NULL;
 
   switch (dest_id) {
-      case GND: target_dev = uart_com_dev; break; // Route GND-bound up to COM
+      case GND: target_dev = uart_com_dev; break; 
       case COM: target_dev = uart_com_dev; break; 
       case PLD: target_dev = uart_pay_dev; break; 
-      case CDH: target_dev = uart_ext_dev; break; // Loops back/debug
+      case CDH: target_dev = uart_ext_dev; break; 
       default:  return; 
   }
 
@@ -190,51 +183,51 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_b
 
   switch(var_code) {
     case VAR_CODE_ALIVE:
-      switch(*val_ptr){ 
-        case 0x01: return 1;
-        default: return 0;
-      }
-      break;
-    case VAR_CODE_COM_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: power_on_com(); return 1;
-        case VAR_DISABLE: power_off_com(); return 1;
-        default: return 0;
-      }
-      break;
-    case VAR_CODE_PAY_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: power_on_pay(); return 1;
-        case VAR_DISABLE: power_off_pay(); return 1;
-        default: return 0;              
+      if (*val_ptr == 0x01){
+        gpio_pin_set_dt(&led2, 1); 
+        return 1;
       } 
-      break;
+      return 0;
+
+    case VAR_CODE_COM_EN:
+      if (*val_ptr == VAR_ENABLE) power_on_com();
+      else if (*val_ptr == VAR_DISABLE) power_off_com();
+      return 1;
+
+    case VAR_CODE_PAY_EN:
+      if (*val_ptr == VAR_ENABLE) power_on_pay();
+      else if (*val_ptr == VAR_DISABLE) power_off_pay();
+      return 1;
+
+    case VAR_CODE_CORAL_WAKE:
+      if (*val_ptr == VAR_ENABLE) cdh_coral_wake(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+    case VAR_CODE_CORAL_CAM_ON:
+      if (*val_ptr == VAR_ENABLE) cdh_coral_cam_on(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+    case VAR_CODE_CORAL_INFER:
+      if (*val_ptr == VAR_ENABLE) cdh_coral_infer(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+
     case VAR_CODE_RF_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
-      }
-      break;
+      if (*val_ptr == VAR_ENABLE) com_enable_rf(rx_cmd_buff, tx_cmd_buff);
+      else if (*val_ptr == VAR_DISABLE) com_disable_rf(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+
     case VAR_CODE_RF_TX: 
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
-        default: return 0;
-      }
+      if (*val_ptr == VAR_ENABLE) com_enable_tx(rx_cmd_buff, tx_cmd_buff);
+      else if (*val_ptr == VAR_DISABLE) com_disable_tx(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+
     case VAR_CODE_RF_RX:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
-        default: return 0;
-      }
+      if (*val_ptr == VAR_ENABLE) com_enable_rx(rx_cmd_buff, tx_cmd_buff);
+      else if (*val_ptr == VAR_DISABLE) com_disable_rx(rx_cmd_buff, tx_cmd_buff);
+      return 1;
+
     case VAR_CODE_BLINK_CDH:
-      switch(*val_ptr){
-        case VAR_ENABLE: cdh_blink_demo(); return 1;
-        case VAR_DISABLE: return 1;
-      }
-    case VAR_CODE_CORAL_WAKE: break;
-    case VAR_CODE_CORAL_CAM_ON: break;
-    case VAR_CODE_CORAL_INFER: break;
+      if (*val_ptr == VAR_ENABLE) cdh_blink_demo();
+      return 1;
+
     default: return 0;
   }
   return 0;
@@ -247,6 +240,22 @@ void power_on_pay(){ gpio_pin_set_dt(&pay_en_pin, 1); }
 void power_off_pay(){ gpio_pin_set_dt(&pay_en_pin, 0); }
 
 void cdh_blink_demo(void){ k_work_submit(&blink_demo_work); }
+
+// ========== UART Commands to Payload (Coral) ========== //
+void cdh_coral_wake(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+    uint8_t my_payload[] = {VAR_CODE_CORAL_WAKE, 0x01, VAR_ENABLE};
+    msg_to_pay(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+void cdh_coral_cam_on(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+    uint8_t my_payload[] = {VAR_CODE_CORAL_CAM_ON, 0x01, VAR_ENABLE};
+    msg_to_pay(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
+
+void cdh_coral_infer(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
+    uint8_t my_payload[] = {VAR_CODE_CORAL_INFER, 0x01, VAR_ENABLE};
+    msg_to_pay(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
+}
 
 // ========== UART Commands to COM ========== //
 void check_com_online(void) {
@@ -313,6 +322,7 @@ void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff){
   msg_to_com(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, my_payload, 3);
 }
 
+// ========== Bootloader Stubs ========== //
 int handle_bootloader_erase(void){ return 1; }
 int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff){ return 1; }
 int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff){ return 1; }

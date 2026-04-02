@@ -1,11 +1,19 @@
 // cdh.h
 // CDH board support header file
+//
+// Written by Jack Rathert
+// Other contributors: Bradley Denby, Chad Taylor, Alok Anand
+//
+// See the top-level LICENSE file for the license.
 
 #ifndef CDH_H
 #define CDH_H
 
 // TAB header //
 #include <tab.h>
+
+// Zephyr Hardware Headers //
+#include <zephyr/drivers/gpio.h>
 
 // Macros //
 
@@ -64,7 +72,6 @@ void init_leds(void);
 void init_gpio(void);
 void init_hardware_uarts(void);
 void init_usb_uart(void);
-
 int  init_usb_console(void);
 
 extern const struct gpio_dt_spec led1;
@@ -81,6 +88,11 @@ void power_on_pay(void);
 void power_off_pay(void);
 void cdh_blink_demo(void);
 void com_start_demo(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+
+// ========== UART Commands to Payload (Coral) ========== //
+void cdh_coral_wake(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void cdh_coral_cam_on(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void cdh_coral_infer(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 // ========== UART Commands to COM ========== //
 void check_com_online(void);

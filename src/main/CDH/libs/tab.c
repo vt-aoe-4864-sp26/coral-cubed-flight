@@ -21,14 +21,13 @@ extern int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff);
 extern int handle_bootloader_jump(void);
 extern int bootloader_active(void);
 
-
 // ========== Stateful Message Tracking ========== //
 
 #define MAX_PENDING_IDS 16
 static uint16_t pending_tx_ids[MAX_PENDING_IDS] = {0};
 static int pending_tx_active[MAX_PENDING_IDS] = {0};
 
-void tab_track_outgoing_id(uint16_t msg_id) {
+static void tab_track_outgoing_id(uint16_t msg_id) {
   for (int i = 0; i < MAX_PENDING_IDS; i++) {
     if (!pending_tx_active[i]) {
       pending_tx_ids[i] = msg_id;
@@ -122,7 +121,6 @@ void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b) {
       break;
     case RX_CMD_BUFF_STATE_ROUTE:
       rx_cmd_buff_o->data[ROUTE_INDEX] = b;
-      // Accept all routes for message forwarding
       rx_cmd_buff_o->state = RX_CMD_BUFF_STATE_OPCODE;
       break;
     case RX_CMD_BUFF_STATE_OPCODE:
@@ -177,10 +175,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
                                 rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
         
         if (check_and_clear_pending_id(incoming_id)) {
-            // It's a reply to our command. Close loop
+            // It's a reply to our command. Close the loop silently.
             send_reply = 0; 
         } else {
-            // Treat it as a ping and bounce it back.
+            // Unsolicited ACK! Treat it as a ping and bounce it back.
             tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
             tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
             send_reply = 1;
@@ -203,12 +201,17 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         }
         common_data_buff.end_index = rx_cmd_buff_o->end_index-PLD_START_INDEX;
         success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
-        if(success) {
-          tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-          tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+        
+        if(tx_cmd_buff_o->empty) {
+          if(success) {
+            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
+            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+          } else {
+            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
+            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_NACK_OPCODE;
+          }
         } else {
-          tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-          tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_NACK_OPCODE;
+            send_reply = 1; // Custom payload was built, guarantee transmission
         }
         break;
       case BOOTLOADER_ACK_OPCODE:
