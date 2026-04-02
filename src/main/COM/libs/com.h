@@ -23,7 +23,9 @@
 // ========== Hardware Init ========== //
 void init_leds(void);
 void init_gpio(void);
-void init_all_uarts(void);
+//void init_all_uarts(void);
+void init_hardware_uarts(void);
+void init_usb_uart(void);
 
 // ========== Command Handlers & Routing ========== //
 int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);

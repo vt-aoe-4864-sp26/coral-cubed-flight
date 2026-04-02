@@ -1,20 +1,19 @@
 // cdh.c
 // CDH board support implementation file
-//
-// Written by Bradley Denby
-// Other contributors: Chad Taylor, Alok Anand, Jack Rathert
-//
-// See the top-level LICENSE file for the license.
 
 #include <stdint.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/usb/usb_device.h>
 
 #include <cdh.h> 
 #include <tab.h> 
 
-// ========== Aliasing ========== //
+// ========== OS Hooks ========== //
+extern struct k_msgq rx_cmd_queue; 
+
+// ========== Hardware Aliasing ========== //
 const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
@@ -22,18 +21,17 @@ const struct device *console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 static const struct gpio_dt_spec com_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(com_en), gpios);
 static const struct gpio_dt_spec pay_en_pin = GPIO_DT_SPEC_GET(DT_ALIAS(pay_en), gpios);
 
-extern const struct device *uart_gnd_dev;
-extern const struct device *uart_com_dev;
-extern const struct device *uart_pay_dev;
-extern const struct device *uart_ext_dev;
+const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); 
+const struct device *uart_com_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); 
+const struct device *uart_ext_dev = DEVICE_DT_GET(DT_ALIAS(uart_2)); 
+const struct device *uart_pay_dev = DEVICE_DT_GET(DT_ALIAS(uart_3)); 
 
-// ========== Concurrency ========== //
+// ========== Concurrency Primitives ========== //
 static struct k_work blink_demo_work;
 
 K_SEM_DEFINE(com_awake_semaphore, 0, 1)
 
 // ========== Workqueue Handling ========== //
-
 static void blink_demo_handler(struct k_work *work) {
     for(int k = 0; k < 20; k++) {
         k_msleep(250);
@@ -49,117 +47,109 @@ static void blink_demo_handler(struct k_work *work) {
     gpio_pin_set_dt(&led2, 0);
 }
 
-// ========== Tab Handling ========== //
+// ========== UART Pipeline Configuration ========== //
+typedef struct {
+    const struct device *dev;
+    rx_cmd_buff_t rx_buff;
+} uart_lane_ctx_t;
 
-int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
-  if(common_data_buff_i.end_index < 2) return 0; 
+static uart_lane_ctx_t uart_lanes[4] = {
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH, .bus_msg_id = 0} },
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH, .bus_msg_id = 0} }, 
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH, .bus_msg_id = 0} },
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = CDH, .bus_msg_id = 0} }  
+};
 
-  uint8_t var_code = common_data_buff_i.data[0];
-  uint8_t var_len  = common_data_buff_i.data[1];
+static void generic_uart_callback(const struct device *dev, void *user_data) {
+    uart_lane_ctx_t *ctx = (uart_lane_ctx_t *)user_data;
+    if (!uart_irq_update(dev)) return;
 
-  if(common_data_buff_i.end_index < (size_t)(2 + var_len)) return 0; 
-
-  uint8_t* val_ptr = &common_data_buff_i.data[2];
-
-  switch(var_code) {
-    case VAR_CODE_ALIVE:
-      switch(*val_ptr){ 
-        case 0x01: return 1;
-        default: return 0;
-      }
-      break;
-
-    case VAR_CODE_COM_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: power_on_com(); return 1;
-        case VAR_DISABLE: power_off_com(); return 1;
-        default: return 0;
-      }
-      break;
-
-    case VAR_CODE_PAY_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: power_on_pay(); return 1;
-        case VAR_DISABLE: power_off_pay(); return 1;
-        default: return 0;              
-      } 
-      break;
-
-    case VAR_CODE_RF_EN:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
-      }
-      break;
-
-    case VAR_CODE_RF_TX: 
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
-        default: return 0;
-      }
-
-    case VAR_CODE_RF_RX:
-      switch(*val_ptr){ 
-        case VAR_ENABLE: com_enable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
-        case VAR_DISABLE: com_disable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
-        default: return 0;
-      }
-
-    case VAR_CODE_BLINK_CDH:
-      switch(*val_ptr){
-        case VAR_ENABLE: cdh_blink_demo(); return 1;
-        case VAR_DISABLE: return 1;
-      }
-
-    case VAR_CODE_CORAL_WAKE: break;
-    case VAR_CODE_CORAL_CAM_ON: break;
-    case VAR_CODE_CORAL_INFER: break;
-
-    default: return 0;
-  }
-  return 0;
+    if (uart_irq_rx_ready(dev)) {
+        uint8_t c;
+        while (uart_fifo_read(dev, &c, 1) == 1) {
+            push_rx_cmd_buff(&ctx->rx_buff, c);
+            if (ctx->rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
+                k_msgq_put(&rx_cmd_queue, &ctx->rx_buff, K_NO_WAIT);
+                clear_rx_cmd_buff(&ctx->rx_buff); 
+            }
+        }
+    }
 }
 
-// ========== Board initialization functions ========== //
-
+// ========== Hardware Init ========== //
 void init_clock(void) {} 
 
 void init_leds(void) {
-    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
-    gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    if (device_is_ready(led1.port)) {
+        gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+        gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+    }
     k_work_init(&blink_demo_work, blink_demo_handler);
 }
-
-void init_uart(void) {} 
 
 void init_gpio(void){
   gpio_pin_configure_dt(&pay_en_pin, GPIO_OUTPUT_INACTIVE);
   gpio_pin_configure_dt(&com_en_pin, GPIO_OUTPUT_INACTIVE);
 }
 
-// ========== UART Communication functions ========== //
+int init_usb_console(void) {
+    uint32_t dtr = 0;
+    if (device_is_ready(console_dev)) {
+        int usb_err = usb_enable(NULL);
+        if (usb_err == 0) {
+            int timeout = 25; // 2.5 sec delay
+            while (!dtr && timeout > 0) {
+                uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
+                k_msleep(100);
+                timeout--;
+            }
+            return 0; // Success
+        }
+    }
+    return -1; // Failure
+}
 
-// NEW Router Function - Replaces reply()
+void init_hardware_uarts(void) {
+    uart_lanes[1].dev = uart_com_dev;
+    uart_lanes[2].dev = uart_pay_dev;
+    uart_lanes[3].dev = uart_ext_dev;
+
+    for (int i = 1; i < 4; i++) {
+        uart_lane_ctx_t *ctx = &uart_lanes[i];
+        clear_rx_cmd_buff(&ctx->rx_buff);
+
+        if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
+            uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
+            uart_irq_rx_enable(ctx->dev);
+        }
+    }
+}
+
+void init_usb_uart(void) {
+    uart_lanes[0].dev = uart_gnd_dev;
+    uart_lane_ctx_t *ctx = &uart_lanes[0];
+    clear_rx_cmd_buff(&ctx->rx_buff);
+
+    if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
+        uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
+        uart_irq_rx_enable(ctx->dev);
+    }
+}
+
+// ========== Routing Logic ========== //
 void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
   if(rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty) {
-    
-    // Extract destination ID from the high nibble
     uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
 
-    // If it's for us, handle it natively.
     if (dest_id == CDH) {
       write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
-    } 
-    // Otherwise, we act as a transparent router (e.g., GND -> CDH -> PLD)
-    else {
+    } else {
       for(size_t i = 0; i < rx_cmd_buff_o->end_index; i++) {
         tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
       }
       tx_cmd_buff_o->start_index = 0;
       tx_cmd_buff_o->end_index = rx_cmd_buff_o->end_index;
       tx_cmd_buff_o->empty = 0;
-      
       clear_rx_cmd_buff(rx_cmd_buff_o);
     }
   }
@@ -172,10 +162,10 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
   const struct device *target_dev = NULL;
 
   switch (dest_id) {
-      case GND: target_dev = uart_gnd_dev; break; // (Assuming alias points to COM via devicetree)
+      case GND: target_dev = uart_com_dev; break; // Route GND-bound up to COM
       case COM: target_dev = uart_com_dev; break; 
       case PLD: target_dev = uart_pay_dev; break; 
-      case CDH: target_dev = uart_ext_dev; break; 
+      case CDH: target_dev = uart_ext_dev; break; // Loops back/debug
       default:  return; 
   }
 
@@ -189,8 +179,68 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
   }
 }
 
-// ========== GPIO functions ========== //
+// ========== Tab Handling ========== //
+int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff) {
+  if(common_data_buff_i.end_index < 2) return 0; 
+  uint8_t var_code = common_data_buff_i.data[0];
+  uint8_t var_len  = common_data_buff_i.data[1];
+  if(common_data_buff_i.end_index < (size_t)(2 + var_len)) return 0; 
 
+  uint8_t* val_ptr = &common_data_buff_i.data[2];
+
+  switch(var_code) {
+    case VAR_CODE_ALIVE:
+      switch(*val_ptr){ 
+        case 0x01: return 1;
+        default: return 0;
+      }
+      break;
+    case VAR_CODE_COM_EN:
+      switch(*val_ptr){ 
+        case VAR_ENABLE: power_on_com(); return 1;
+        case VAR_DISABLE: power_off_com(); return 1;
+        default: return 0;
+      }
+      break;
+    case VAR_CODE_PAY_EN:
+      switch(*val_ptr){ 
+        case VAR_ENABLE: power_on_pay(); return 1;
+        case VAR_DISABLE: power_off_pay(); return 1;
+        default: return 0;              
+      } 
+      break;
+    case VAR_CODE_RF_EN:
+      switch(*val_ptr){ 
+        case VAR_ENABLE: com_enable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
+        case VAR_DISABLE: com_disable_rf(rx_cmd_buff, tx_cmd_buff); return 1;
+      }
+      break;
+    case VAR_CODE_RF_TX: 
+      switch(*val_ptr){ 
+        case VAR_ENABLE: com_enable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
+        case VAR_DISABLE: com_disable_tx(rx_cmd_buff, tx_cmd_buff); return 1;
+        default: return 0;
+      }
+    case VAR_CODE_RF_RX:
+      switch(*val_ptr){ 
+        case VAR_ENABLE: com_enable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
+        case VAR_DISABLE: com_disable_rx(rx_cmd_buff, tx_cmd_buff); return 1;
+        default: return 0;
+      }
+    case VAR_CODE_BLINK_CDH:
+      switch(*val_ptr){
+        case VAR_ENABLE: cdh_blink_demo(); return 1;
+        case VAR_DISABLE: return 1;
+      }
+    case VAR_CODE_CORAL_WAKE: break;
+    case VAR_CODE_CORAL_CAM_ON: break;
+    case VAR_CODE_CORAL_INFER: break;
+    default: return 0;
+  }
+  return 0;
+}
+
+// ========== GPIO functions ========== //
 void power_on_com(){ gpio_pin_set_dt(&com_en_pin, 1); }
 void power_off_com(){ gpio_pin_set_dt(&com_en_pin, 0); }
 void power_on_pay(){ gpio_pin_set_dt(&pay_en_pin, 1); }
@@ -199,7 +249,6 @@ void power_off_pay(){ gpio_pin_set_dt(&pay_en_pin, 0); }
 void cdh_blink_demo(void){ k_work_submit(&blink_demo_work); }
 
 // ========== UART Commands to COM ========== //
-
 void check_com_online(void) {
     tx_cmd_buff_t local_tx = {.size=CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_tx);

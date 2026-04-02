@@ -6,6 +6,9 @@
 #include <com.h>                    
 #include <tab.h>
 
+// ========== OS Hooks ========== //
+extern struct k_msgq rx_cmd_queue;
+
 // ========== Macros ========== //
 #define NVMC_CONFIG MMIO32    (NVMC_BASE + 0x504)
 #define NVMC_CONFIG_REN       (0     )
@@ -21,34 +24,18 @@
 const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
 const struct device *uart_cdh_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // Hardware to CDH
 
-static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
 static const struct gpio_dt_spec fem_tx_en = GPIO_DT_SPEC_GET(FEM_NODE, tx_en_gpios);
 static const struct gpio_dt_spec fem_rx_en = GPIO_DT_SPEC_GET(FEM_NODE, rx_en_gpios);
 static const struct gpio_dt_spec fem_pdn   = GPIO_DT_SPEC_GET(FEM_NODE, pdn_gpios);
 static const struct gpio_dt_spec fem_mode  = GPIO_DT_SPEC_GET(FEM_NODE, mode_gpios);
 
-// ========== Concurrency Primitives ========== //
-
-// 1. Comm Router Queue
-K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
-
-// 2. Application Events
+// ========== Application Events ========== //
 #define EVENT_BLINK_DEMO BIT(0)
 #define EVENT_RUN_DEMO   BIT(1)
 K_EVENT_DEFINE(app_events);
-
-typedef struct {
-    const struct device *dev;
-    rx_cmd_buff_t rx_buff;
-} uart_lane_ctx_t;
-
-static uart_lane_ctx_t uart_lanes[2] = {
-    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = COM} },
-    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = COM} }
-};
-
 
 // ========== Hardware Init ========== //
 void init_leds(void) {
@@ -65,18 +52,25 @@ void init_gpio(void) {
     }
 }
 
+// ========== UART Pipeline ========== //
+typedef struct {
+    const struct device *dev;
+    rx_cmd_buff_t rx_buff;
+} uart_lane_ctx_t;
 
-// ========== UART ISR Pipeline ========== //
+static uart_lane_ctx_t uart_lanes[2] = {
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = COM, .bus_msg_id = 0} },
+    { .dev = NULL, .rx_buff = {.size = CMD_MAX_LEN, .route_id = COM, .bus_msg_id = 0} }
+};
+
 static void generic_uart_callback(const struct device *dev, void *user_data) {
     uart_lane_ctx_t *ctx = (uart_lane_ctx_t *)user_data;
-
     if (!uart_irq_update(dev)) return;
 
     if (uart_irq_rx_ready(dev)) {
         uint8_t c;
         while (uart_fifo_read(dev, &c, 1) == 1) {
             push_rx_cmd_buff(&ctx->rx_buff, c);
-            
             if (ctx->rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
                 k_msgq_put(&rx_cmd_queue, &ctx->rx_buff, K_NO_WAIT);
                 clear_rx_cmd_buff(&ctx->rx_buff); 
@@ -85,41 +79,27 @@ static void generic_uart_callback(const struct device *dev, void *user_data) {
     }
 }
 
-void init_all_uarts(void) {
-    uart_lanes[0].dev = uart_gnd_dev;
+void init_hardware_uarts(void) {
     uart_lanes[1].dev = uart_cdh_dev;
+    uart_lane_ctx_t *ctx = &uart_lanes[1];
+    clear_rx_cmd_buff(&ctx->rx_buff);
 
-    for (int i = 0; i < 2; i++) {
-        uart_lane_ctx_t *ctx = &uart_lanes[i];
-        clear_rx_cmd_buff(&ctx->rx_buff);
-
-        if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
-            uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
-            uart_irq_rx_enable(ctx->dev);
-        }
+    if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
+        uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
+        uart_irq_rx_enable(ctx->dev);
     }
 }
 
+void init_usb_uart(void) {
+    uart_lanes[0].dev = uart_gnd_dev;
+    uart_lane_ctx_t *ctx = &uart_lanes[0];
+    clear_rx_cmd_buff(&ctx->rx_buff);
 
-// ========== Thread 1: Comm Router (Priority 5) ========== //
-void cmd_processor_entry(void) {
-    rx_cmd_buff_t local_rx;
-    tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
-    
-    while (1) {
-        if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0) {
-            clear_tx_cmd_buff(&local_tx); // Ensure clean state before routing
-
-            route_rx_packet(&local_rx, &local_tx); 
-            
-            if (!local_tx.empty) {
-                route_tx_packet(&local_tx); 
-            }
-        }
+    if (ctx->dev != NULL && device_is_ready(ctx->dev)) {
+        uart_irq_callback_user_data_set(ctx->dev, generic_uart_callback, ctx);
+        uart_irq_rx_enable(ctx->dev);
     }
 }
-K_THREAD_DEFINE(cmd_processor_tid, 1024, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
-
 
 // ========== Thread 2: Application Tasks (Priority 7) ========== //
 void app_thread_entry(void *p1, void *p2, void *p3) {
@@ -206,7 +186,7 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_dev, b);
         }
-        gpio_pin_toggle_dt(&led2); // Flash LED2 on successful route
+        gpio_pin_toggle_dt(&led2);
     } else {
         clear_tx_cmd_buff(tx_cmd_buff_o); 
     }

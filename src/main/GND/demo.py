@@ -193,9 +193,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print(f"initializing pcb communication on {port}...")
-
     board = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
-
     try:
         # wait for device and connect
         board._wait_for_serial(timeout=10)
@@ -236,7 +234,6 @@ if __name__ == '__main__':
         board.enable_tx()
 
         print("--- testing complete ---")
-
     except Exception as e:
         print(f"error during execution: {e}")
         sys.exit(1)

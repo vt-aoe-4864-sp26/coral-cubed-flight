@@ -1,10 +1,5 @@
 // cdh.h
 // CDH board support header file
-//
-// Written by Jack Rathert
-// Other contributors: Bradley Denby, Chad Taylor, Alok Anand, Jack Rathert
-//
-// See the top-level LICENSE file for the license.
 
 #ifndef CDH_H
 #define CDH_H
@@ -29,9 +24,6 @@
 // ========== Start of application address space
 #define APP_ADDR   ((uint32_t)0x08008000U)
 
-// SRAM definitions removed for Zephyr compatibility
-
-
 // ========== UART common_data handles ========== //
 #define VAR_CODE_ALIVE          ((uint8_t)0x00)
 #define VAR_CODE_COM_EN         ((uint8_t)0x01)
@@ -41,8 +33,8 @@
 #define VAR_CODE_RF_EN          ((uint8_t)0x03)
 #define VAR_CODE_RF_TX          ((uint8_t)0x04)
 #define VAR_CODE_RF_RX          ((uint8_t)0x05)
-#define VAR_CODE_BLINK_CDH     ((uint8_t)0x06)
-#define VAR_CODE_BLINK_COM     ((uint8_t)0x07)
+#define VAR_CODE_BLINK_CDH      ((uint8_t)0x06)
+#define VAR_CODE_BLINK_COM      ((uint8_t)0x07)
 
 // ========== Payload Commands
 #define VAR_CODE_CORAL_WAKE     ((uint8_t)0x08)
@@ -69,12 +61,14 @@ int bootloader_active(void);
 
 void init_clock(void);
 void init_leds(void);
-void init_uart(void);
 void init_gpio(void);
+void init_hardware_uarts(void);
+void init_usb_uart(void);
+
+int  init_usb_console(void);
 
 extern const struct gpio_dt_spec led1;
 extern const struct gpio_dt_spec led2;
-extern const struct device *console_dev;
 
 // ========== Concurrency Variables ========== //
 extern struct k_sem com_awake_semaphore;
@@ -97,10 +91,7 @@ void com_disable_rx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_enable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
-void rx_usart1(rx_cmd_buff_t* rx_cmd_buff_o);
-void reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
+void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o);
-void route_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx cmd_buff_o);
-
 
 #endif
