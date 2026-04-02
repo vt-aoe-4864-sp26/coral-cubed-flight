@@ -1,0 +1,220 @@
+make: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[1]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[  0%] Built target libs_kissfft-m4
+[  0%] Built target libs_mjson
+[  0%] Built target libs_littlefs
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[  0%] Built target libs_kissfft-m7
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[  1%] Built target libs_FreeRTOS-m4
+[  2%] Built target libs_FreeRTOS
+[  2%] Built target libs_littlefs-m4
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[  6%] Built target libs_CMSIS-m4
+[  9%] Built target libs_CMSIS-m7
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 13%] Built target libs_libjpeg
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 19%] Built target flashloader
+[ 24%] Built target libs_nxp_rt1176-sdk_bm-m4
+[ 30%] Built target libs_nxp_rt1176-sdk_freertos-m4
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 30%] Built target libs_base-m4_bm
+[ 36%] Built target libs_nxp_rt1176-sdk_bm
+[ 42%] Built target libs_nxp_rt1176-sdk_freertos
+[ 42%] Built target libs_pmic_freertos-m4
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 42%] Built target libs_nxp_rt1176-sdk-mcmgr_m7
+[ 42%] Built target libs_usb_host_edgetpu_freertos
+[ 42%] Built target libs_usb_host_edgetpu_bm
+[ 43%] Built target libs_base-m7_bm
+[ 43%] Built target libs_pmic_freertos
+[ 44%] Built target libs_usb_host_task_freertos
+[ 44%] Built target libs_nxp_rt1176-sdk_sdmmc
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 44%] Built target libs_base-m4_freertos
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 45%] Built target libs_audio_freertos
+[ 48%] Built target libs_nxp_rt1176-sdk_lwip
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 48%] Built target libs_camera_freertos-m4
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 49%] Built target libs_nxp_rt1176-sdk_lwip_httpd
+[ 49%] Built target libs_nxp_rt1176-sdk_lwip_mdns
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 50%] Built target elf_loader
+[ 50%] Built target libs_jpeg_m4
+[ 51%] Built target libs_coremark-m4
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 55%] Built target libs_nxp_rt1176-sdk_wiced
+[ 55%] Built target libs_base-m7_http_server
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 59%] Built target libs_nxp_rt1176-sdk-mbedtls
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 59%] Built target libs_base-m7_wifi
+[ 59%] Built target libs_usb_device_task_freertos
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 61%] Built target libs_a71ch
+[ 73%] Built target libs_tensorflow-m4
+[ 74%] Built target libs_tpu_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 78%] Built target edgefast_bluetooth_internal
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 78%] Built target libs_tpu_task_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 78%] Built target libs_tpu_dfu_task_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 91%] Built target libs_tensorflow-m7
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 92%] Built target libs_base-m7_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 92%] Built target libs_cdc_eem_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 92%] Built target libs_cdc_acm_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 92%] Built target libs_camera_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 93%] Built target libs_jpeg_m7
+[ 93%] Built target libs_coremark-m7
+[ 93%] Linking CXX executable coralmicro-app
+[ 93%] Built target libs_base-m7_ethernet
+[ 94%] Built target libs_rpc_http_server
+[ 94%] Built target libs_rpc_utils
+[ 95%] Built target libs_msc_ums_freertos
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 95%] Built target libs_testlib
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Entering directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 95%] Linking CXX static library liblibs_arduino_coral_micro_poe.a
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/tempsense.cc.obj
+[ 95%] Linking CXX static library liblibs_arduino_coral_micro.a
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/console_m7.cc.obj
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/utils.cc.obj
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/timer.cc.obj
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/gpio.cc.obj
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/reset.cc.obj
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/random.cc.obj
+[ 95%] Linking CXX static library liblibs_arduino_coral_micro_wifi.a
+[ 95%] Building CXX object coralmicro_build/libs/base/CMakeFiles/libs_base-ums_freertos.dir/main_freertos_ums.cc.obj
+[ 99%] Built target libs_curl
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[ 99%] Built target libs_arduino_coral_micro
+[ 99%] Built target libs_arduino_coral_micro_wifi
+[ 99%] Built target libs_arduino_coral_micro_poe
+/home/jackr/Repos/coral-workspace/coral-cubed-flight/third-party/coralmicro/third_party/toolchain-linux/gcc-arm-none-eabi-9-2020-q2-update/bin/../lib/gcc/arm-none-eabi/9.3.1/../../../../arm-none-eabi/bin/ld: cannot find -larduino
+/home/jackr/Repos/coral-workspace/coral-cubed-flight/third-party/coralmicro/third_party/toolchain-linux/gcc-arm-none-eabi-9-2020-q2-update/bin/../lib/gcc/arm-none-eabi/9.3.1/../../../../arm-none-eabi/bin/ld: cannot find -lcoralmicro_base
+/home/jackr/Repos/coral-workspace/coral-cubed-flight/third-party/coralmicro/third_party/toolchain-linux/gcc-arm-none-eabi-9-2020-q2-update/bin/../lib/gcc/arm-none-eabi/9.3.1/../../../../arm-none-eabi/bin/ld: cannot find -lcoralmicro_freertos
+collect2: error: ld returned 1 exit status
+make[2]: *** [CMakeFiles/coralmicro-app.dir/build.make:297: coralmicro-app] Error 1
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make[1]: *** [CMakeFiles/Makefile2:734: CMakeFiles/coralmicro-app.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[100%] Linking CXX static library liblibs_base-ums_freertos.a
+make[2]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+[100%] Built target libs_base-ums_freertos
+make[1]: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
+make: *** [Makefile:91: all] Error 2
+make: Leaving directory '/home/jackr/Repos/coral-workspace/coral-cubed-flight/src/main/TPU/out'
