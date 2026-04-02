@@ -206,7 +206,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyACM1' # default
+    port = '/dev/ttyACM0' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:

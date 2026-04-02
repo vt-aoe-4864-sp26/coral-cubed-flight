@@ -20,7 +20,7 @@ add_subdirectory(${CORAL_MICRO_PATH} coralmicro_build)
 add_executable_m7(coralmicro-app
         demo.cc
         DATA
-        models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite
+        ${PROJECT_SOURCE_DIR}/models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite
 )
 
 target_link_libraries(coralmicro-app

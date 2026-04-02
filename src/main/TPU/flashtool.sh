@@ -25,7 +25,7 @@ find out/coralmicro_build -type f -name "mklfs" -exec cp {} out/ \;
 echo "=== Flashing to Board ==="
 python3 ../../../third-party/coralmicro/scripts/flashtool.py \
     --build_dir out \
-    --elf_path out/coralmicro-app --nodata
+    --elf_path out/coralmicro-app 
 
 echo ""
 echo "=== Success! ==="
