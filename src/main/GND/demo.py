@@ -149,35 +149,56 @@ class PCB:
         
 
     # ==== Updated to route directly to CDH ==== #
-    def cdh_enable_pay(self, var_code_pay_en=0x02, var_enable=0x01):
-        # Targeting CDH directly. COM will act as a transparent router!
+    def cdh_enable_pay(self, enable=True):
+        val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
-        cmd.common_data([var_code_pay_en, 0x01, var_enable])
+        cmd.common_data([0x02, 0x01, val])
         self._send_and_wait(cmd)
 
-    def cdh_blink_demo(self, var_code_blink_cdh = 0x06):
-        # Targeting CDH directly. COM will act as a transparent router!
+    def cdh_blink_demo(self):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
-        cmd.common_data([var_code_blink_cdh, 0x01, 0x01])
+        cmd.common_data([0x06, 0x01, 0x01])
+        self._send_and_wait(cmd)
+        
+    # ==== NEW: Coral Micro Payload Commands ==== #
+    def cdh_coral_wake(self, enable=True):
+        val = 0x01 if enable else 0x02
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd.common_data([0x08, 0x01, val])
+        self._send_and_wait(cmd)
+        
+    def cdh_coral_cam_on(self, enable=True):
+        val = 0x01 if enable else 0x02
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd.common_data([0x09, 0x01, val])
+        self._send_and_wait(cmd)
+        
+    def cdh_coral_infer(self, enable=True):
+        val = 0x01 if enable else 0x02
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd.common_data([0x0A, 0x01, val])
         self._send_and_wait(cmd)
     # ========================================== #
 
-    def enable_rf(self, var_code_rf_en=0x03, var_enable=0x01):
+    def enable_rf(self, enable=True):
+        val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
-        cmd.common_data([var_code_rf_en, 0x01, var_enable])
+        cmd.common_data([0x03, 0x01, val])
         self._send_and_wait(cmd)
 
-    def enable_tx(self, var_code_rf_tx=0x04):
+    def enable_tx(self, enable=True):
+        val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
-        cmd.common_data([var_code_rf_tx, 0x01, 0x01]) # val byte ignored by com.c
+        cmd.common_data([0x04, 0x01, val]) 
         self._send_and_wait(cmd)
 
-    def enable_rx(self, var_code_rf_rx=0x05):
+    def enable_rx(self, enable=True):
+        val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
-        cmd.common_data([var_code_rf_rx, 0x01, 0x01]) # val byte ignored by com.c
+        cmd.common_data([0x05, 0x01, val]) 
         self._send_and_wait(cmd)
     
-    def com_blink_demo(self, var_code_blink_cdh = 0x07):
+    def com_blink_demo(self):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
         cmd.common_data([0x07, 0x01, 0x01])
         self._send_and_wait(cmd)
@@ -185,7 +206,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyACM0' # default
+    port = '/dev/ttyACM1' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
@@ -207,7 +228,6 @@ if __name__ == '__main__':
         # test leds - com
         board.com_blink_demo()
         print("blinked com")
-        time.sleep(15)
         
         board.cdh_blink_demo()
         print("blinked cdh")
@@ -215,11 +235,7 @@ if __name__ == '__main__':
         # test common debug
         board.common_debug('hello, world!')
 
-        print("--- testing routing to cdh & hardware enables ---")
-
-        # enable payload
-        print("enabling payload (should route transparently through com to cdh)...")
-        board.cdh_enable_pay()
+        print("--- testing hardware enables ---")
 
         # enable com rf frontend
         print("enabling rf frontend...")
@@ -232,6 +248,27 @@ if __name__ == '__main__':
         # enable com tx
         print("enabling tx...")
         board.enable_tx()
+        
+        print("--- testing payload routing & inference ---")
+
+        # enable payload eps
+        print("powering up payload board from cdh...")
+        board.cdh_enable_pay(enable=True)
+        
+        print("waiting 5 seconds for freertos and edgetpu to boot...")
+        time.sleep(5.0)
+        
+        print("triggering coral inference loop...")
+        board.cdh_coral_infer(enable=True)
+        
+        print("inference running. observing for 10 seconds...")
+        time.sleep(10.0)
+        
+        print("halting inference...")
+        board.cdh_coral_infer(enable=False)
+        
+        print("powering down payload board...")
+        board.cdh_enable_pay(enable=False)
 
         print("--- testing complete ---")
     except Exception as e:
