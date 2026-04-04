@@ -4,6 +4,12 @@
 
 #include "tab.h" 
 
+// ========== Board Role Configuration ========== //
+#define ROLE_GROUND_STATION 0
+#define ROLE_SATELLITE      1
+
+#define CURRENT_BOARD_ROLE  ROLE_GROUND_STATION
+
 // ========== Macros & Constants ========== //
 #define VAR_CODE_ALIVE             ((uint8_t)0x00)
 #define VAR_CODE_COM_EN            ((uint8_t)0x01)

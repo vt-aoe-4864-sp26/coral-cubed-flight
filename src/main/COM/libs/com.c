@@ -103,22 +103,40 @@ void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o) {
     if (tx_cmd_buff_o->empty) return;
 
     uint8_t dest_id = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
-    const struct device *target_dev = NULL;
+    const struct device *target_uart = NULL;
+    int send_to_radio = 0;
 
-    switch (dest_id) {
-        case GND: target_dev = uart_gnd_dev; break; 
-        case CDH: 
-        case PLD: target_dev = uart_cdh_dev; break; 
-        default:  return; 
+#if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
+    // Ground Station Topology
+    if (dest_id == GND) {
+        target_uart = uart_gnd_dev; // Local USB
+    } else if (dest_id == CDH || dest_id == PLD) {
+        send_to_radio = 1;          // Over the air to Satellite
     }
+#else
+    // Satellite Topology
+    if (dest_id == GND) {
+        send_to_radio = 1;          // Over the air to Ground Station
+    } else if (dest_id == CDH || dest_id == PLD) {
+        target_uart = uart_cdh_dev; // Local physical UART
+    }
+#endif
 
-    if (target_dev != NULL && device_is_ready(target_dev)) {
+    // Execute the routing
+    if (send_to_radio) {
+        radio_send_packet(tx_cmd_buff_o);
+        clear_tx_cmd_buff(tx_cmd_buff_o);
+        gpio_pin_toggle_dt(&led2);
+    } 
+    else if (target_uart != NULL && device_is_ready(target_uart)) {
         while(!(tx_cmd_buff_o->empty)) {
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
-            uart_poll_out(target_dev, b);
+            uart_poll_out(target_uart, b);
         }
-        gpio_pin_toggle_dt(&led2); // Flash LED2 on successful route transmission
-    } else {
+        gpio_pin_toggle_dt(&led2);
+    } 
+    else {
+        // Nowhere valid to route, drop packet
         clear_tx_cmd_buff(tx_cmd_buff_o); 
     }
 }

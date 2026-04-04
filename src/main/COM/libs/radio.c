@@ -13,6 +13,7 @@
 #include <string.h> 
 #include "radio.h"
 #include "tab.h"
+#include "com.h"
 
 // ========== Configuration ========== //
 #define MAX_RETRIES          5
@@ -28,9 +29,13 @@ static const int8_t tx_power_escalation[] = {-12, -4, 0, 4, 8};
 #define ADDR_GROUND_STATION    0x0001
 #define ADDR_SATELLITE         0x0002
 
-// TODO: configure based on which board this is!!!
-#define MY_SHORT_ADDR          ADDR_GROUND_STATION 
-#define TARGET_SHORT_ADDR      ADDR_SATELLITE
+#if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
+    #define MY_SHORT_ADDR      ADDR_GROUND_STATION 
+    #define TARGET_SHORT_ADDR  ADDR_SATELLITE
+#else
+    #define MY_SHORT_ADDR      ADDR_SATELLITE 
+    #define TARGET_SHORT_ADDR  ADDR_GROUND_STATION
+#endif
 //
 
 static int radio_sock = -1;
