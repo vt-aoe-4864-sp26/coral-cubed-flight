@@ -31,18 +31,18 @@ int main(void) {
     uint32_t dtr = 0;
     
     init_leds();
-    init_radio(); // Replaces init_gpio()
+    init_radio(); 
 
-    // Boot hardware connection to CDH immediately
+    // Boot hardware connection to CDH
     init_hardware_uarts();
 
-    // SAFE USB BOOT: Only enable RX interrupts if physical terminal connects
+    // Only boot usb device/UART if something is connected within 'usb_enumeration_timeout'
     if (device_is_ready(uart_gnd_dev) && usb_enable(NULL) == 0) {
-        int timeout = 25; // 2.5 second max wait
-        while (!dtr && timeout > 0) {
+        int usb_enumeration_timeout = 100;
+        while (!dtr && usb_enumeration_timeout > 0) {
             uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
             k_msleep(100);
-            timeout--;
+            usb_enumeration_timeout--;
         }
         if (dtr) {
             init_usb_uart(); // Enable USB interrupts safely!
