@@ -3,9 +3,10 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
-#include <com.h>
+#include "com.h"
+#include "uart.h"
+#include "radio.h"
 
-extern const struct device *uart_gnd_dev;
 extern const struct gpio_dt_spec led1;
 extern const struct gpio_dt_spec led2;
 
@@ -28,8 +29,9 @@ K_THREAD_DEFINE(cmd_processor_tid, 2048, cmd_processor_entry, NULL, NULL, NULL, 
 
 int main(void) {
     uint32_t dtr = 0;
+    
     init_leds();
-    init_gpio();
+    init_radio(); // Replaces init_gpio()
 
     // Boot hardware connection to CDH immediately
     init_hardware_uarts();

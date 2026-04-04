@@ -2,7 +2,7 @@
 #ifndef COM_H
 #define COM_H
 
-#include <tab.h> 
+#include "tab.h" 
 
 // ========== Macros & Constants ========== //
 #define VAR_CODE_ALIVE             ((uint8_t)0x00)
@@ -22,25 +22,12 @@
 
 // ========== Hardware Init ========== //
 void init_leds(void);
-void init_gpio(void);
-//void init_all_uarts(void);
-void init_hardware_uarts(void);
-void init_usb_uart(void);
-
-void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 
 // ========== Command Handlers & Routing ========== //
+void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 void route_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o);
-
-// ========== Hardware Controls ========== //
-void enable_rf(void);
-void disable_rf(void);
-void enable_rx(void);
-void disable_rx(void); 
-void enable_tx(void);
-void disable_tx(void);
 
 // ========== Outbound Messaging Targets & Demos ========== //
 void cdh_enable_pay(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
