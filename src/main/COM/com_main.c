@@ -12,6 +12,7 @@ extern const struct gpio_dt_spec led2;
 
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
 
+/* Command Processing Thread */
 void cmd_processor_entry(void) {
     rx_cmd_buff_t local_rx;
     tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
@@ -24,7 +25,6 @@ void cmd_processor_entry(void) {
         }
     }
 }
-
 K_THREAD_DEFINE(cmd_processor_tid, 2048, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
 
 int main(void) {
