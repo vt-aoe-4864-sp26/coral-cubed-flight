@@ -5,8 +5,8 @@
 #include "tab.h" 
 
 // ========== Board Role Configuration ========== //
-#define ROLE_GROUND_STATION 0
-#define ROLE_SATELLITE      1
+#define ROLE_GROUND_STATION 1
+#define ROLE_SATELLITE      0
 
 #define CURRENT_BOARD_ROLE  ROLE_GROUND_STATION
 

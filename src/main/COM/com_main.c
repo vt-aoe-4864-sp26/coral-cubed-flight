@@ -38,7 +38,7 @@ int main(void) {
 
     // Only boot usb device/UART if something is connected within 'usb_enumeration_timeout'
     if (device_is_ready(uart_gnd_dev) && usb_enable(NULL) == 0) {
-        int usb_enumeration_timeout = 100;
+        int usb_enumeration_timeout  = 100;
         while (!dtr && usb_enumeration_timeout > 0) {
             uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
             k_msleep(100);
