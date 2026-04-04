@@ -220,7 +220,6 @@ if __name__ == '__main__':
         board._wait_for_serial(timeout=10)
 
         print("--- commencing tests ---")
-
         print("alive")
         board.handshake()
         print("--- blinking ---") 
@@ -228,6 +227,8 @@ if __name__ == '__main__':
         # test leds - com
         board.com_blink_demo()
         print("blinked com")
+
+        time.sleep(10.0) # time for the iee stack to boot
         
         board.cdh_blink_demo()
         print("blinked cdh")
@@ -235,20 +236,6 @@ if __name__ == '__main__':
         # test common debug
         board.common_debug('hello, world!')
 
-        print("--- testing hardware enables ---")
-
-        # enable com rf frontend
-        print("enabling rf frontend...")
-        board.enable_rf()
-
-        # enable com rx
-        print("enabling rx...")
-        board.enable_rx()
-
-        # enable com tx
-        print("enabling tx...")
-        board.enable_tx()
-        
         print("--- testing payload routing & inference ---")
 
         # enable payload eps
