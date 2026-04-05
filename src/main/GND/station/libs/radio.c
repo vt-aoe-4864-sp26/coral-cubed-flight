@@ -13,7 +13,7 @@
 #include <string.h> 
 #include "radio.h"
 #include "tab.h"
-#include "com.h"
+#include "gnd.h"
 
 // ========== Configuration ========== //
 #define MAX_RETRIES          15

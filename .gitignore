@@ -13,6 +13,7 @@ src/third-party
 #zephyr
 build_cdh
 build_com
+build_gnd
 build_pay
 
 # Python Scripting
