@@ -5,7 +5,7 @@
 #include <zephyr/device.h>
 #include "tab.h"
 
-extern const struct device *uart_dev;
+extern const struct device *uart_gnd_dev;
 extern const struct device *uart_cdh_dev;
 
 void init_hardware_uarts(void);

@@ -138,13 +138,13 @@ class PCB:
         
     def handshake(self):
         print("initiating uart handshake...")
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COMG) 
         cmd.common_data([0x00,0x01,0x01]) # send alive
         success = self._send_and_wait(cmd, timeout=2.0, retries=5)
         if success:
             print("uart handshake successful.\n")
         else:
-            print("uart handshake failed. please check the connection to the com board.\n")
+            print("uart handshake failed. please check the connection to the comg board.\n")
             sys.exit(1)
         
 
@@ -160,7 +160,7 @@ class PCB:
         cmd.common_data([0x06, 0x01, 0x01])
         self._send_and_wait(cmd)
         
-    # ==== NEW: Coral Micro Payload Commands ==== #
+    # ==== Coral Micro Payload Commands ==== #
     def cdh_coral_wake(self, enable=True):
         val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
@@ -219,11 +219,13 @@ if __name__ == '__main__':
         # wait for device and connect
         board._wait_for_serial(timeout=10)
 
-        time.sleep(20.0) # time for the iee stack to boot
+        
 
         print("--- commencing tests ---")
         print("alive")
         board.handshake()
+
+        time.sleep(5.0) # time for the iee stack to boot
         print("--- blinking ---") 
         
         # test leds - com

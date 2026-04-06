@@ -7,7 +7,7 @@
 extern struct k_msgq rx_cmd_queue;
 
 // ========== Hardware Aliases ========== //
-const struct device *uart_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
+const struct device *uart_gnd_dev = DEVICE_DT_GET(DT_ALIAS(uart_0)); // USB-C / Ground
 const struct device *uart_cdh_dev = DEVICE_DT_GET(DT_ALIAS(uart_1)); // Hardware to CDH
 
 // ========== UART Pipeline ========== //
@@ -48,7 +48,7 @@ void init_hardware_uarts(void) {
 }
 
 void init_usb_uart(void) {
-    uart_lanes[0].dev = uart_dev;
+    uart_lanes[0].dev = uart_gnd_dev;
     uart_lane_ctx_t *ctx = &uart_lanes[0];
     clear_rx_cmd_buff(&ctx->rx_buff);
 

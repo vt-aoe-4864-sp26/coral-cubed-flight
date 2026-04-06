@@ -1,6 +1,6 @@
 // com.h
-#ifndef COM_H
-#define COM_H
+#ifndef GND_H
+#define GND_H
 
 #include "tab.h" 
 

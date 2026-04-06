@@ -32,10 +32,11 @@ BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE = 0x20
 BOOTLOADER_JUMP_OPCODE              = 0x0b
 
 ## Route Nibble IDs
-GND = 0x00
-COM = 0x01
-CDH = 0x02
-PLD = 0x03
+GND    = 0x00
+COM    = 0x01
+CDH    = 0x02
+PLD    = 0x03
+COMG  = 0x04
 
 ## TAB command indices
 START_BYTE_0_INDEX = 0

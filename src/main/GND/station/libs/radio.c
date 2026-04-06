@@ -179,7 +179,7 @@ K_THREAD_DEFINE(radio_tid, 2048, radio_thread_entry, NULL, NULL, NULL, 6, 0, 0);
 
 void radio_rx_thread_entry(void *p1, void *p2, void *p3) {
     uint8_t rx_buffer[128]; 
-    rx_cmd_buff_t radio_rx_tab = {.size = CMD_MAX_LEN, .route_id = COM, .bus_msg_id = 0};
+    rx_cmd_buff_t radio_rx_tab = {.size = CMD_MAX_LEN, .route_id = COMG, .bus_msg_id = 0};
 
     while (1) {
         if (radio_sock < 0) {
@@ -187,15 +187,18 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3) {
             continue;
         }
         
-        // Non-blocking socket
+        // Non-blocking socket read
         int len = zsock_recv(radio_sock, rx_buffer, sizeof(rx_buffer), ZSOCK_MSG_DONTWAIT);
 
+        // 1. No data available right now (returns negative error code, usually -EAGAIN). 
+        // Yield the thread to let the TX thread acquire the socket lock if it's waiting.
+        if (len < 0) {
+            k_msleep(5);
+            continue;
+        }
+        
+        // 2. Data received! Process the buffer.
         if (len > 0) {
-            // Need to yield to let TX push any bytes it has
-            if (len < 0) {
-                k_msleep(5);
-                continue;
-            }
             for (int i = 0; i < len; i++) {
                 push_rx_cmd_buff(&radio_rx_tab, rx_buffer[i]);
                 

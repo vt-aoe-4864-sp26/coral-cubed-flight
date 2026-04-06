@@ -187,15 +187,18 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3) {
             continue;
         }
         
-        // Non-blocking socket
+        // Non-blocking socket read
         int len = zsock_recv(radio_sock, rx_buffer, sizeof(rx_buffer), ZSOCK_MSG_DONTWAIT);
 
+        // no data available right now (returns negative error code, usually -EAGAIN). 
+        // Yield the thread to let the TX thread acquire the socket lock if it's waiting.
+        if (len < 0) {
+            k_msleep(5);
+            continue;
+        }
+        
+        // Data received! Process the buffer.
         if (len > 0) {
-            // Need to yield to let TX push any bytes it has
-            if (len < 0) {
-                k_msleep(5); 
-                continue;
-            }
             for (int i = 0; i < len; i++) {
                 push_rx_cmd_buff(&radio_rx_tab, rx_buffer[i]);
                 
