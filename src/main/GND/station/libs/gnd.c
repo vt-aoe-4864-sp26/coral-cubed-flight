@@ -1,4 +1,4 @@
-// com.c
+// gnd.c
 #include <stdint.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
@@ -70,14 +70,14 @@ void app_thread_entry(void *p1, void *p2, void *p3)
             route_tx_packet(&demo_tx);
             k_msleep(1000);
 
-            // enable_rf();
-            // k_msleep(1000);
-            // enable_rx();
-            // k_msleep(1000);
-            // enable_tx();
-            // k_msleep(1000);
-            // disable_tx();
-            // disable_rf();
+            enable_rf();
+            k_msleep(1000);
+            enable_rx();
+            k_msleep(1000);
+            enable_tx();
+            k_msleep(1000);
+            disable_tx();
+            disable_rf();
 
             clear_tx_cmd_buff(&demo_tx);
             cdh_enable_pay(&dummy_rx, &demo_tx);
@@ -96,14 +96,6 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
 
         if (dest_id == COMG)
         {
-            // 6 blinks and its good
-            for (int i = 0; i < 6; i++)
-            {
-                gpio_pin_toggle_dt(&led1);
-                k_msleep(50);
-            }
-            gpio_pin_set_dt(&led1, 0); // leave it off
-
             write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
         }
         else
@@ -136,7 +128,7 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
         target_uart = uart_gnd_dev; // Local USB
     }
     else if (dest_id == CDH || dest_id == PLD || dest_id == COM)
-    {
+    {                      // CHANGED: Send COM to Radio
         send_to_radio = 1; // Over the air to Satellite
     }
 #else
@@ -160,20 +152,11 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {
-        for (int i = 0; i < 10; i++)
-        {
-            gpio_pin_toggle_dt(&led1);
-            k_msleep(30);
-        }
-        gpio_pin_set_dt(&led1, 0); // turn it off to reset
         while (!(tx_cmd_buff_o->empty))
         {
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_uart, b);
         }
-
-        uart_irq_tx_enable(target_uart);
-        uart_irq_tx_disable(target_uart);
         gpio_pin_toggle_dt(&led2);
     }
     else

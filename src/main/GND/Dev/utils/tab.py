@@ -268,6 +268,8 @@ def route_to_str(route,node):
     return 'cdh'
   elif nibble==PLD:
     return 'pld'
+  elif nibble==COMG:
+    return 'comg'
   else:
     return '???'
 

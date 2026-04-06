@@ -13,15 +13,19 @@ extern const struct gpio_dt_spec led2;
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
 
 /* Command Processing Thread */
-void cmd_processor_entry(void) {
+void cmd_processor_entry(void)
+{
     rx_cmd_buff_t local_rx;
     tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
-    
-    while (1) {
-        if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0) {
-            clear_tx_cmd_buff(&local_tx); 
-            process_rx_packet(&local_rx, &local_tx); 
-            if (!local_tx.empty) route_tx_packet(&local_tx); 
+
+    while (1)
+    {
+        if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0)
+        {
+            clear_tx_cmd_buff(&local_tx);
+            process_rx_packet(&local_rx, &local_tx);
+            if (!local_tx.empty)
+                route_tx_packet(&local_tx);
         }
     }
 }
@@ -34,16 +38,24 @@ int main(void)
     init_leds();
     init_radio();
 
+    // Boot hardware connection to CDH
+    init_hardware_uarts();
+
+    // Only boot usb device/UART if something is connected within 'usb_enumeration_timeout'
     if (device_is_ready(uart_gnd_dev) && usb_enable(NULL) == 0)
     {
-        while (!dtr)
+        int usb_enumeration_timeout = 100;
+        while (!dtr && usb_enumeration_timeout > 0)
         {
             uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
             k_msleep(100);
+            usb_enumeration_timeout--;
         }
-
-        init_usb_uart(); // Safe to arm interrupts now!
-        gpio_pin_set_dt(&led1, 1);
+        if (dtr)
+        {
+            init_usb_uart(); // Enable USB interrupts safely!
+            //gpio_pin_set_dt(&led1, 1);
+        }
     }
 
     while (1)
