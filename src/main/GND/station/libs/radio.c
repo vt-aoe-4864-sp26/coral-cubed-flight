@@ -38,7 +38,8 @@ static const int8_t tx_power_escalation[] = {-12, -4, 0, 4, 8};
 #define TARGET_SHORT_ADDR ADDR_GROUND_STATION
 #endif
 
-static int radio_sock = -1;
+static int radio_rx_sock = -1;
+static int radio_tx_sock = -1;
 static struct sockaddr_ll target_sll = {0};
 
 // ========== Data Structures ========== //
@@ -101,7 +102,7 @@ static void execute_radio_tx(void)
 
     k_busy_wait(30);
 
-    zsock_sendto(radio_sock,
+    zsock_sendto(radio_tx_sock,
                 pending_msg.payload.data,
                 pending_msg.payload.end_index,
                 ZSOCK_MSG_DONTWAIT,
@@ -158,11 +159,11 @@ void radio_thread_entry(void *p1, void *p2, void *p3)
                 }
                 k_mutex_unlock(&pending_msg_mutex);
             }
+            k_msleep(10);
+            continue;
         }
 
-        k_timeout_t wait_time = is_active ? K_MSEC(10) : K_FOREVER;
-
-        if (k_msgq_get(&radio_tx_queue, &new_tx, wait_time) == 0)
+        if (k_msgq_get(&radio_tx_queue, &new_tx, K_FOREVER) == 0)
         {
             k_mutex_lock(&pending_msg_mutex, K_FOREVER);
 
@@ -196,14 +197,14 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3)
 
     while (1)
     {
-        if (radio_sock < 0)
+        if (radio_rx_sock < 0)
         {
             k_msleep(100);
             continue;
         }
 
         // Non-blocking socket read
-        int len = zsock_recv(radio_sock, rx_buffer, sizeof(rx_buffer), ZSOCK_MSG_DONTWAIT);
+        int len = zsock_recv(radio_rx_sock, rx_buffer, sizeof(rx_buffer), ZSOCK_MSG_DONTWAIT);
 
         // no data available right now (returns negative error code, usually -EAGAIN).
         // Yield the thread to let the TX thread acquire the socket lock if it's waiting.
@@ -293,10 +294,19 @@ void init_radio(void)
     uint16_t channel = 26;
     net_mgmt(NET_REQUEST_IEEE802154_SET_CHANNEL, iface, &channel, sizeof(channel));
 
-    radio_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
-    if (radio_sock < 0)
+    radio_rx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
+    if (radio_rx_sock < 0)
     {
         return;
+    }
+
+    radio_tx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
+    if (radio_tx_sock >= 0) {
+        struct zsock_timeval tv = {
+            .tv_sec = 0,
+            .tv_usec = 50000,
+        };
+        (void)zsock_setsockopt(radio_tx_sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     }
 
     target_sll.sll_family = AF_PACKET;

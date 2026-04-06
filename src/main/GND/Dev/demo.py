@@ -223,7 +223,7 @@ if __name__ == '__main__':
 
         print("--- commencing tests ---")
         print("alive")
-        # board.handshake()
+        board.handshake()
         print("--- blinking ---") 
         
         # test leds - com
