@@ -1,4 +1,5 @@
 // radio.c
+// radio support package for GROUND COM (COMG)
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/net/ieee802154_radio.h>
@@ -186,9 +187,15 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3) {
             continue;
         }
         
-        int len = zsock_recv(radio_sock, rx_buffer, sizeof(rx_buffer), 0);
-        
+        // Non-blocking socket
+        int len = zsock_recv(radio_sock, rx_buffer, sizeof(rx_buffer), ZSOCK_MSG_DONTWAIT);
+
         if (len > 0) {
+            // Need to yield to let TX push any bytes it has
+            if (len < 0) {
+                k_msleep(5);
+                continue;
+            }
             for (int i = 0; i < len; i++) {
                 push_rx_cmd_buff(&radio_rx_tab, rx_buffer[i]);
                 
@@ -234,7 +241,6 @@ K_THREAD_DEFINE(radio_rx_tid, 2048, radio_rx_thread_entry, NULL, NULL, NULL, 6, 
 
 void init_radio(void) {
     if(device_is_ready(fem_pdn.port)) {
-        // MATCHING FRIEND'S INIT: Pull PDN high, TX off, RX listening, MODE high (gain)
         gpio_pin_configure_dt(&fem_tx_en, GPIO_OUTPUT_INACTIVE);
         gpio_pin_configure_dt(&fem_rx_en, GPIO_OUTPUT_INACTIVE);
         gpio_pin_configure_dt(&fem_pdn, GPIO_OUTPUT_ACTIVE);
@@ -265,8 +271,8 @@ void init_radio(void) {
     target_sll.sll_family = AF_PACKET;
     target_sll.sll_ifindex = net_if_get_by_iface(iface);
     target_sll.sll_halen = 2; 
-    target_sll.sll_addr[0] = (TARGET_SHORT_ADDR >> 8) & 0xFF; 
-    target_sll.sll_addr[1] = TARGET_SHORT_ADDR & 0xFF;        
+    target_sll.sll_addr[0] = 0xFF; // 802.15.4 Broadcast Address
+    target_sll.sll_addr[1] = 0xFF;        
 }
 
 int radio_send_packet(tx_cmd_buff_t *tx_buff) {
