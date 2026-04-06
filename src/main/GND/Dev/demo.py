@@ -131,8 +131,8 @@ class PCB:
         cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, dst)
         self._send_and_wait(cmd)
     
-    def send_alive(self):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+    def send_alive(self, destid):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, destid)
         cmd.common_data([0x00,0x01,0x01])
         self._send_and_wait(cmd)
         
@@ -203,6 +203,12 @@ class PCB:
         cmd.common_data([0x07, 0x01, 0x01])
         self._send_and_wait(cmd)
 
+    def comg_blink_demo(self):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COMG)
+        cmd.common_data([0x07, 0x01, 0x01])
+        self._send_and_wait(cmd)
+
+
 
 if __name__ == '__main__':
     # parse script arguments
@@ -227,10 +233,14 @@ if __name__ == '__main__':
         print("--- blinking ---") 
         
         # test leds - com
-        board.com_blink_demo()
-        print("blinked com")
+        board.comg_blink_demo()
+        print("blinked comg")
 
         time.sleep(10.0) # time for the iee stack to boot
+
+        # test leds - com
+        board.com_blink_demo()
+        print("blinked com")
         
         board.cdh_blink_demo()
         print("blinked cdh")

@@ -54,7 +54,7 @@ if [ "$SKIP_FLASH" = false ]; then
             init; \
             reset halt; \
             nrf5 mass_erase; \
-            program \"$PROJECT_ROOT/build_com/zephyr/zephyr.hex\" verify; \
+            program \"$PROJECT_ROOT/build_gnd/zephyr/zephyr.hex\" verify; \
             resume; \
             exit" 2>&1)
 
