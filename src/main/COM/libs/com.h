@@ -8,7 +8,7 @@
 #define ROLE_GROUND_STATION 1
 #define ROLE_SATELLITE      0
 
-#define CURRENT_BOARD_ROLE  ROLE_GROUND_STATION
+#define CURRENT_BOARD_ROLE  ROLE_SATELLITE
 
 // ========== Macros & Constants ========== //
 #define VAR_CODE_ALIVE             ((uint8_t)0x00)

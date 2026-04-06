@@ -39,7 +39,7 @@ class PCB:
             time.sleep(0.5)
         raise TimeoutError(f"serial port {self.dev} not found within {timeout}s")
     
-    def _send_and_wait(self, cmd, timeout=5.0, retries=3):
+    def _send_and_wait(self, cmd, timeout=15.0, retries=3):
         """helper to handle the repetitive tx/rx loop for all commands."""
         for attempt in range(retries):
             byte_i = 0
@@ -219,6 +219,8 @@ if __name__ == '__main__':
         # wait for device and connect
         board._wait_for_serial(timeout=10)
 
+        time.sleep(20.0) # time for the iee stack to boot
+
         print("--- commencing tests ---")
         print("alive")
         board.handshake()
@@ -227,8 +229,6 @@ if __name__ == '__main__':
         # test leds - com
         board.com_blink_demo()
         print("blinked com")
-
-        time.sleep(10.0) # time for the iee stack to boot
         
         board.cdh_blink_demo()
         print("blinked cdh")

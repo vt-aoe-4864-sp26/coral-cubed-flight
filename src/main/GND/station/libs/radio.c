@@ -106,8 +106,8 @@ static void execute_radio_tx(void) {
             sizeof(target_sll));
             
     // 4. Yield thread to let the MAC layer immediately format and blast the frame.
-    // 15ms safely covers RTOS scheduling overhead + 4ms physical air time.
-    k_msleep(15); 
+    // 25ms safely covers RTOS scheduling overhead + physical air time.
+    k_msleep(25); 
     
     // 5. Revert to RX listening mode
     enable_rx(); 
@@ -194,6 +194,20 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3) {
                 
                 if (radio_rx_tab.state == RX_CMD_BUFF_STATE_COMPLETE) {
                     
+                    // --- Loopback Prevention ---
+                    uint8_t src_id = radio_rx_tab.data[ROUTE_INDEX] & 0x0F;
+                    int is_loopback = 0;
+#if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
+                    if (src_id == GND || src_id == COMG) is_loopback = 1;
+#else
+                    if (src_id == COM || src_id == CDH || src_id == PLD) is_loopback = 1;
+#endif
+                    if (is_loopback) {
+                        clear_rx_cmd_buff(&radio_rx_tab);
+                        continue;
+                    }
+                    // ---------------------------
+
                     k_mutex_lock(&pending_msg_mutex, K_FOREVER);
                     if (pending_msg.active && 
                         radio_rx_tab.data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
