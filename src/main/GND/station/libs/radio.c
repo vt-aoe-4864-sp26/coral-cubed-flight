@@ -100,7 +100,7 @@ static void execute_radio_tx(void)
 {
     enable_tx();
 
-    k_busy_wait(30);
+    k_busy_wait(30); // 30us guard band for FEM amplifiers to stabilize
 
     zsock_sendto(radio_tx_sock,
                 pending_msg.payload.data,
@@ -109,8 +109,7 @@ static void execute_radio_tx(void)
                  (const struct sockaddr *)&target_sll,
                 sizeof(target_sll));
 
-    // 25ms safely covers RTOS scheduling overhead + physical air time.
-    k_msleep(25);
+    k_msleep(15);
 
     // Revert to RX listening mode
     enable_rx();

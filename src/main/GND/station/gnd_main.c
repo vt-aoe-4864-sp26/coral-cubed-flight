@@ -54,7 +54,7 @@ int main(void)
         if (dtr)
         {
             init_usb_uart(); // Enable USB interrupts safely!
-            //gpio_pin_set_dt(&led1, 1);
+            gpio_pin_set_dt(&led1, 1);
         }
     }
 
