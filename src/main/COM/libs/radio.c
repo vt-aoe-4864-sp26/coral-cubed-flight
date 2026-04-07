@@ -12,6 +12,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <hal/nrf_radio.h>
 #include <string.h>
+#include <errno.h>
 #include "radio.h"
 #include "tab.h"
 #include "com.h"
@@ -41,9 +42,12 @@ static const int8_t tx_power_escalation[] = {-12, -4, 0, 4, 8};
 #define TARGET_SHORT_ADDR ADDR_GROUND_STATION
 #endif
 
+#define RADIO_UDP_PORT 4242
+#define RADIO_MULTICAST_IPV6 "ff02::1"
+
 static int radio_rx_sock = -1;
 static int radio_tx_sock = -1;
-static struct sockaddr_ll target_sll = {0};
+static struct sockaddr_in6 target_addr = {0};
 
 // ========== Data Structures ========== //
 K_MSGQ_DEFINE(radio_tx_queue, sizeof(tx_cmd_buff_t), RADIO_QUEUE_SIZE, 4);
@@ -101,25 +105,36 @@ void disable_rx(void) { gpio_pin_set_dt(&fem_rx_en, 0); }
 // ========== TX Execution Helper ========== //
 static void execute_radio_tx(void)
 {
-    // Manually force FEM to TX.
     enable_tx();
-
-    // Wait for RF amplifier to settle (nRF21540 requires ~20us)
+    gpio_pin_set_dt(&led1, 1);
     k_busy_wait(30);
 
-    // Queue packet to Zephyr MAC thread
-    zsock_sendto(radio_tx_sock,
-                pending_msg.payload.data,
-                pending_msg.payload.end_index,
-                ZSOCK_MSG_DONTWAIT,
-                (const struct sockaddr *)&target_sll,
-                sizeof(target_sll));
+    int sent_bytes = zsock_sendto(radio_tx_sock,
+                                pending_msg.payload.data,
+                                pending_msg.payload.end_index,
+                                ZSOCK_MSG_DONTWAIT,
+                                (const struct sockaddr *)&target_addr,
+                                sizeof(target_addr));
 
-    // Yield thread to let the MAC layer immediately format and blast the frame.
-    // 15ms safely covers RTOS scheduling overhead + physical air time.
+    if (sent_bytes < 0)
+    {
+        int specific_error = errno;
+        disable_tx();
+        while (1)
+        {
+            for (int i = 0; i < specific_error; i++)
+            {
+                gpio_pin_set_dt(&led1, 1);
+                k_busy_wait(200000);
+                gpio_pin_set_dt(&led1, 0);
+                k_busy_wait(200000);
+            }
+            k_msleep(2000);
+        }
+    }
+
     k_msleep(15);
-
-    // Revert to RX listening mode
+    gpio_pin_set_dt(&led1, 0);
     enable_rx();
 }
 
@@ -287,52 +302,55 @@ void init_radio(void)
         enable_rx(); // Explicitly force RX mode on boot
     }
 
-    struct net_if *iface = net_if_get_ieee802154();
-    if (!iface)
-    {
-        return;
-    }
-
-    uint16_t pan_id = sys_cpu_to_le16(CORAL_PAN_ID);
-    uint16_t short_addr = sys_cpu_to_le16(MY_SHORT_ADDR);
-
-    net_mgmt(NET_REQUEST_IEEE802154_SET_PAN_ID, iface, &pan_id, sizeof(pan_id));
-    net_mgmt(NET_REQUEST_IEEE802154_SET_SHORT_ADDR, iface, &short_addr, sizeof(short_addr));
-
-    uint16_t channel = 26;
-    net_mgmt(NET_REQUEST_IEEE802154_SET_CHANNEL, iface, &channel, sizeof(channel));
-
-    radio_rx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
+    // --- SETUP RX SOCKET (UDP IPv6) ---
+    radio_rx_sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
     if (radio_rx_sock < 0)
     {
-        return;
+        while (1)
+        {
+            gpio_pin_toggle_dt(&led1);
+            k_msleep(100);
+        }
     }
 
-    struct sockaddr_ll rx_sll = {0};
-    rx_sll.sll_family = AF_PACKET;
-    rx_sll.sll_protocol = htons(ETH_P_IEEE802154);
-    rx_sll.sll_ifindex = net_if_get_by_iface(iface);
+    struct sockaddr_in6 rx_addr = {0};
+    rx_addr.sin6_family = AF_INET6;
+    rx_addr.sin6_port = htons(RADIO_UDP_PORT);
+    rx_addr.sin6_addr = in6addr_any;
 
-    if (zsock_bind(radio_rx_sock, (struct sockaddr *)&rx_sll, sizeof(rx_sll)) < 0)
+    if (zsock_bind(radio_rx_sock, (struct sockaddr *)&rx_addr, sizeof(rx_addr)) < 0)
     {
-        return; // Socket failed to bind to interface
+        while (1)
+        {
+            gpio_pin_toggle_dt(&led1);
+            k_msleep(500);
+        }
     }
 
-    radio_tx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
-    if (radio_tx_sock >= 0)
+    // Join the Multicast Group so we actually listen to the ether
+    struct ipv6_mreq mreq = {0};
+    zsock_inet_pton(AF_INET6, RADIO_MULTICAST_IPV6, &mreq.ipv6mr_multiaddr);
+    mreq.ipv6mr_ifindex = 0;
+    zsock_setsockopt(radio_rx_sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq));
+
+    // --- SETUP TX SOCKET (UDP IPv6) ---
+    radio_tx_sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+    if (radio_tx_sock < 0)
     {
-        struct zsock_timeval tv = {
-            .tv_sec = 0,
-            .tv_usec = 50000,
-        };
-        (void)zsock_setsockopt(radio_tx_sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        while (1)
+        {
+            gpio_pin_toggle_dt(&led2);
+            k_msleep(100);
+        }
     }
 
-    target_sll.sll_family = AF_PACKET;
-    target_sll.sll_ifindex = net_if_get_by_iface(iface);
-    target_sll.sll_halen = 2;
-    target_sll.sll_addr[0] = 0xFF; // 802.15.4 Broadcast Address
-    target_sll.sll_addr[1] = 0xFF;
+    struct zsock_timeval tv = {.tv_sec = 0, .tv_usec = 50000};
+    (void)zsock_setsockopt(radio_tx_sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    // Prepare the TX Struct target
+    target_addr.sin6_family = AF_INET6;
+    target_addr.sin6_port = htons(RADIO_UDP_PORT);
+    zsock_inet_pton(AF_INET6, RADIO_MULTICAST_IPV6, &target_addr.sin6_addr);
 }
 
 int radio_send_packet(tx_cmd_buff_t *tx_buff)

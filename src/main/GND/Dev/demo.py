@@ -223,8 +223,9 @@ if __name__ == '__main__':
     board = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
     try:
         # wait for device and connect
-        board._wait_for_serial(timeout=10)
+        board._wait_for_serial(timeout=60)
 
+        input("\nthe device is connected. press ENTER to begin running tests...\n")
         time.sleep(1.0)
 
         print("--- commencing tests ---")
