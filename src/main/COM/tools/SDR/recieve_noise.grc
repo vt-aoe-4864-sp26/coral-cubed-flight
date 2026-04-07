@@ -194,7 +194,7 @@ blocks:
     alias: ''
     amp: 'False'
     bandwidth: '0'
-    center_freq: '433000000'
+    center_freq: '2440000000'
     comment: ''
     dev_args: ''
     gain: '16'
