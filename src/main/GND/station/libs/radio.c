@@ -1,5 +1,5 @@
 // radio.c
-// radio support package for Satellite COM
+// radio support package for Satellite COMG/gnd
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/net/ieee802154_radio.h>
@@ -15,6 +15,9 @@
 #include "radio.h"
 #include "tab.h"
 #include "gnd.h"
+
+extern const struct gpio_dt_spec led1;
+extern const struct gpio_dt_spec led2;
 
 // ========== Configuration ========== //
 #define MAX_RETRIES 15
@@ -216,6 +219,7 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3)
         // Data received! Process the buffer.
         if (len > 0)
         {
+            gpio_pin_toggle_dt(&led1);
             for (int i = 0; i < len; i++)
             {
                 push_rx_cmd_buff(&radio_rx_tab, rx_buffer[i]);
@@ -317,6 +321,7 @@ void init_radio(void)
 
 int radio_send_packet(tx_cmd_buff_t *tx_buff)
 {
+    gpio_pin_toggle_dt(&led2);
     return k_msgq_put(&radio_tx_queue, tx_buff, K_NO_WAIT);
 }
 

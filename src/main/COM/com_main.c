@@ -46,12 +46,12 @@ int main(void) {
         }
         init_usb_uart(); // Enable USB interrupts safely!
         if (dtr) {
-            gpio_pin_set_dt(&led1, 1); 
+            
         }
     }
 
     while (1) {
-        gpio_pin_toggle_dt(&led2);
+        
         k_msleep(2000); 
     }
     
