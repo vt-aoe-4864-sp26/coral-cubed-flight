@@ -193,14 +193,14 @@ blocks:
     affinity: ''
     alias: ''
     amp: 'False'
-    bandwidth: '0'
-    center_freq: '2440000000'
+    bandwidth: '5000000'
+    center_freq: '2480000000'
     comment: ''
     dev_args: ''
     gain: '16'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samp_rate: '20000000'
+    samp_rate: '5000000'
     type: fc32
     vga: '16'
   states:

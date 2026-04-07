@@ -73,9 +73,9 @@ class recieve_noise(gr.top_block, Qt.QWidget):
 
         self.soapy_hackrf_source_0 = soapy.source(dev, "fc32", 1, '',
                                   stream_args, tune_args, settings)
-        self.soapy_hackrf_source_0.set_sample_rate(0, 20000000)
-        self.soapy_hackrf_source_0.set_bandwidth(0, 0)
-        self.soapy_hackrf_source_0.set_frequency(0, 2440000000)
+        self.soapy_hackrf_source_0.set_sample_rate(0, 5000000)
+        self.soapy_hackrf_source_0.set_bandwidth(0, 5000000)
+        self.soapy_hackrf_source_0.set_frequency(0, 2480000000)
         self.soapy_hackrf_source_0.set_gain(0, 'AMP', False)
         self.soapy_hackrf_source_0.set_gain(0, 'LNA', min(max(16, 0.0), 40.0))
         self.soapy_hackrf_source_0.set_gain(0, 'VGA', min(max(16, 0.0), 62.0))
