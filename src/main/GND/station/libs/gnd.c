@@ -40,6 +40,18 @@ void app_thread_entry(void *p1, void *p2, void *p3)
 {
     while (1)
     {
+        // Inside COMG's app_thread_entry while(1) loop:
+        tx_cmd_buff_t ping_tx = {.size = CMD_MAX_LEN};
+        clear_tx_cmd_buff(&ping_tx);
+        rx_cmd_buff_t dummy_rx = {.route_id = COMG, .bus_msg_id = 0};
+
+        // Build a blink command destined for COM
+        cdh_blink_demo(&dummy_rx, &ping_tx);
+        ping_tx.data[ROUTE_INDEX] = (COM << 4) | COMG; // Force Route: Dest COM, Src COMG
+
+        route_tx_packet(&ping_tx); // This will trigger radio_send_packet and toggle led2
+        k_msleep(2000);            // Blast a ping every 2 seconds automatically
+        
         uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_FOREVER);
 
         if (events & EVENT_BLINK_DEMO)
