@@ -109,11 +109,11 @@ static void execute_radio_tx(void)
 
     // Queue packet to Zephyr MAC thread
     zsock_sendto(radio_tx_sock,
-                 pending_msg.payload.data,
-                 pending_msg.payload.end_index,
-                 ZSOCK_MSG_DONTWAIT,
-                 (const struct sockaddr *)&target_sll,
-                 sizeof(target_sll));
+                pending_msg.payload.data,
+                pending_msg.payload.end_index,
+                ZSOCK_MSG_DONTWAIT,
+                (const struct sockaddr *)&target_sll,
+                sizeof(target_sll));
 
     // Yield thread to let the MAC layer immediately format and blast the frame.
     // 15ms safely covers RTOS scheduling overhead + physical air time.
@@ -306,6 +306,16 @@ void init_radio(void)
     if (radio_rx_sock < 0)
     {
         return;
+    }
+
+    struct sockaddr_ll rx_sll = {0};
+    rx_sll.sll_family = AF_PACKET;
+    rx_sll.sll_protocol = htons(ETH_P_IEEE802154);
+    rx_sll.sll_ifindex = net_if_get_by_iface(iface);
+
+    if (zsock_bind(radio_rx_sock, (struct sockaddr *)&rx_sll, sizeof(rx_sll)) < 0)
+    {
+        return; // Socket failed to bind to interface
     }
 
     radio_tx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);

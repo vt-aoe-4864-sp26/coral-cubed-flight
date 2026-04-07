@@ -1,14 +1,15 @@
-// com.h
 #ifndef COM_H
 #define COM_H
 
-#include "tab.h" 
+#include "tab.h"
 
 // ========== Board Role Configuration ========== //
-#define ROLE_GROUND_STATION 0
-#define ROLE_SATELLITE      1
+// Keep the constants static across all files
+#define ROLE_GROUND_STATION 1
+#define ROLE_SATELLITE 2
 
-#define CURRENT_BOARD_ROLE  ROLE_SATELLITE
+// Assign the identity
+#define CURRENT_BOARD_ROLE ROLE_SATELLITE
 
 // ========== Macros & Constants ========== //
 #define VAR_CODE_ALIVE             ((uint8_t)0x00)
@@ -30,8 +31,8 @@
 void init_leds(void);
 
 // ========== Command Handlers & Routing ========== //
-void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
-int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
+void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_o);
+int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t *rx_cmd_buff, tx_cmd_buff_t *tx_cmd_buff);
 void route_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o);
 

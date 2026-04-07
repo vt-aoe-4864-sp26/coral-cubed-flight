@@ -1,14 +1,16 @@
-// com.h
+// gnd.h 
 #ifndef GND_H
 #define GND_H
 
-#include "tab.h" 
+#include "tab.h"
 
 // ========== Board Role Configuration ========== //
+// Keep the constants static across all files
 #define ROLE_GROUND_STATION 1
-#define ROLE_SATELLITE      0
+#define ROLE_SATELLITE 2
 
-#define CURRENT_BOARD_ROLE  ROLE_GROUND_STATION
+// Assign the identity
+#define CURRENT_BOARD_ROLE ROLE_GROUND_STATION
 
 // ========== Macros & Constants ========== //
 #define VAR_CODE_ALIVE             ((uint8_t)0x00)

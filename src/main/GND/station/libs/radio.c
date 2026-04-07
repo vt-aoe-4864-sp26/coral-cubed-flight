@@ -303,6 +303,16 @@ void init_radio(void)
         return;
     }
 
+    struct sockaddr_ll rx_sll = {0};
+    rx_sll.sll_family = AF_PACKET;
+    rx_sll.sll_protocol = htons(ETH_P_IEEE802154);
+    rx_sll.sll_ifindex = net_if_get_by_iface(iface);
+
+    if (zsock_bind(radio_rx_sock, (struct sockaddr *)&rx_sll, sizeof(rx_sll)) < 0)
+    {
+        return; // Socket failed to bind to interface
+    }
+
     radio_tx_sock = zsock_socket(AF_PACKET, SOCK_DGRAM, ETH_P_IEEE802154);
     if (radio_tx_sock >= 0) {
         struct zsock_timeval tv = {
