@@ -36,23 +36,27 @@ void init_leds(void)
 }
 
 // ========== Thread 2: Application Tasks (Priority 7) ========== //
+// ========== Thread 2: Application Tasks (Priority 7) ========== //
 void app_thread_entry(void *p1, void *p2, void *p3)
 {
     while (1)
     {
-        // Inside COMG's app_thread_entry while(1) loop:
+        // Build a manual payload for COM blink
+        k_msleep(2000);
         tx_cmd_buff_t ping_tx = {.size = CMD_MAX_LEN};
         clear_tx_cmd_buff(&ping_tx);
         rx_cmd_buff_t dummy_rx = {.route_id = COMG, .bus_msg_id = 0};
 
-        // Build a blink command destined for COM
-        cdh_blink_demo(&dummy_rx, &ping_tx);
-        ping_tx.data[ROUTE_INDEX] = (COM << 4) | COMG; // Force Route: Dest COM, Src COMG
+        uint8_t my_payload[] = {VAR_CODE_BLINK_COM, 0x01, VAR_ENABLE};
 
-        route_tx_packet(&ping_tx); // This will trigger radio_send_packet and toggle led2
-        k_msleep(2000);            // Blast a ping every 2 seconds automatically
-        
-        uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_FOREVER);
+        msg_to_com(&dummy_rx, &ping_tx, COMMON_DATA_OPCODE, my_payload, 3);
+        ping_tx.data[ROUTE_INDEX] = (COM << 4) | COMG;
+
+        // Blast the ping
+        route_tx_packet(&ping_tx);
+
+        // Act as our 2-second delay timer
+        uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_MSEC(2000));
 
         if (events & EVENT_BLINK_DEMO)
         {
@@ -73,7 +77,6 @@ void app_thread_entry(void *p1, void *p2, void *p3)
 
             tx_cmd_buff_t demo_tx = {.size = CMD_MAX_LEN};
             clear_tx_cmd_buff(&demo_tx);
-            rx_cmd_buff_t dummy_rx = {.route_id = COMG, .bus_msg_id = 0};
 
             k_event_post(&app_events, EVENT_BLINK_DEMO);
             k_msleep(1000);
@@ -97,7 +100,7 @@ void app_thread_entry(void *p1, void *p2, void *p3)
         }
     }
 }
-K_THREAD_DEFINE(app_tid, 1024, app_thread_entry, NULL, NULL, NULL, 7, 0, 0);
+K_THREAD_DEFINE(app_tid, 2048, app_thread_entry, NULL, NULL, NULL, 7, 0, 0);
 
 // ========== Routing Logic ========== //
 void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_o)
@@ -160,7 +163,7 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     {
         radio_send_packet(tx_cmd_buff_o);
         clear_tx_cmd_buff(tx_cmd_buff_o);
-        gpio_pin_toggle_dt(&led2);
+    
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {

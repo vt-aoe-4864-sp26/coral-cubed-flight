@@ -62,6 +62,7 @@ int main(void)
     {
         
         k_msleep(2000);
+        gpio_pin_toggle_dt(&led2);
     }
 
     return 0;
