@@ -1,34 +1,22 @@
-# Command and Data Handling Software
+# Command and Data Handling (CDH)
 
-## Directory Structure
+**Path:** `src/main/CDH/`
+**Primary File:** `cdh_main.c`
 
-### Primary App
+## Primary Functionality
+The CDH module runs on the Custom STM32 Board (`coral_stm32`) using the Zephyr RTOS. It acts as the central orchestrator for the flight stack, handling the power sequencing for the COM module to prevent USB brownouts and initializing hardware peripherals like UARTs and LEDs. 
 
-[cdh_main.c](cdh_main.c) : Main application to flash to the CDH board
+In its continuous operation, it expects a handshake from the COM module, runs command/packet routing, and processes command queues (`rx_cmd_queue` and `tx_cmd_buff_t`), communicating over hardware UART.
 
-### Supporting Apps
+## Flashing & Building
+We use `flashtool.sh` to wrap `west build` and `st-flash` for the STM32 processing unit.
 
-* [cdh.c](libs/cdh.c) : Board Support Implementation
-* [cdh.h](libs/cdh.h) : Board Support Header
-
-* [tab.c](libs/tab.c) : Communications Protocol Implementation
-* [tab.h](libs/tab.h) : Communications Protocol Header
-
-### Flashtool
-
-A flashtool has been included for your convenience which will build the apps and flash it to the CDH board via SWD
-
-Via Native x64 Linux:
-
+### Flashtool Usage
+Run the flashtool from this directory:
 ```bash
-chmod +x setup.sh
-./flashtool.sh
+./flashtool.sh [FLAGS]
 ```
 
-Via WSL (after mounting the ST-Link SWD to your WSL)
-
-```bash
-chmod +x setup.sh
-dos2unix setup.sh
-./flashtool.sh
-```
+### Flags
+- `--no-build` or `-nb` : Skip the Zephyr build step.
+- `--no-flash` or `-nf` : Skip the st-flash flashing step.

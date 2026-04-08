@@ -1,56 +1,23 @@
-# Communications Software
+# Communication Module (COM)
 
-## Directory Structure
+**Path:** `src/main/COM/`
+**Primary File:** `com_main.c`
 
-### Primary App
+## Primary Functionality
+The COM module runs on the customized nRF52833 board (`coral_nrf52833`) utilizing the Zephyr RTOS. It serves as the primary router and communication bridge between the ground station and the CDH board.
 
-* [com_main.c](com_main.c) : Main application to flash to the COM board.
+It boots its hardware connections to CDH via UART, initializes its internal radio subsystem, and routes command packets back and forth between the local interfaces (`rx_cmd_queue` and `tx_cmd_buff_t`). It detects UART DTR to verify USB activity securely.
 
-### Supporting Libraries
+## Flashing & Building
+We use `flashtool.sh` to wrapper `west build` alongside OpenOCD (`openocd`) targeted to perform SWD connection over ST-Link.
 
-* [com.c](libs/com.c) / [com.h](libs/com.h) : High-level board application, routing logic, and command handlers.
-* [radio.c](libs/radio.c) / [radio.h](libs/radio.h) : nRF52833 Radio FEM controls, retry logic, and IEEE 802.15.4 stack interface.
-* [uart.c](libs/uart.c) / [uart.h](libs/uart.h) : Hardware UART pipelines and interrupt handling.
-* [tab.c](libs/tab.c) / [tab.h](libs/tab.h) : TAB Serial Communications Protocol implementation.
-
-## Flashtool (`flashtool.sh`)
-
-A flashtool script has been included for your convenience. It automatically activates the `coraldev` Python virtual environment, builds the application using `west` for the `coral_nrf52833` board, and flashes it via an ST-Link SWD using OpenOCD.
-
-**Basic Usage (Native x64 Linux):**
-
+### Flashtool Usage
+Run the flashtool from this directory:
 ```bash
-chmod +x flashtool.sh
-./flashtool.sh
+./flashtool.sh [FLAGS]
 ```
 
-**Via WSL (after mounting the ST-Link SWD to your WSL):**
-
-```
-chmod +x flashtool.sh
-dos2unix flashtool.sh
-./flashtool.sh
-```
-
-**Script Arguments**
-ou can modify the behavior of the flashtool using the following arguments:
-
-`--no-build` or `-nb` : Skips the west build step. Useful if you just want to re-flash an existing build.
-
-`--no-flash` or `-nf` : Skips the OpenOCD flashing step. Useful if you just want to verify the code compiles.
-
-`--reset` or `-rst` : Performs an nrf52_recover sequence before proceeding.
-
-## Troubleshooting
-
-Did your board decide to kill itself or stop responding after a bad flash? Don't panic. Nuke the bootloader and recover the nRF52 by using the reset flag:
-
-```bash
-./flashtool.sh --reset
-```
-
-Alternatively, you can run the OpenOCD recovery command manually from within the `tools` directory:
-
-```bash
-openocd -f stlink.cfg -f nrf52.cfg -c "init; nrf52_recover; exit"
-```
+### Flags
+- `--no-build` or `-nb` : Skip the Zephyr build step.
+- `--no-flash` or `-nf` : Skip the openocd flashing step.
+- `--reset` or `-rst` : Connects to OpenOCD and issues `nrf52_recover` to recover a locked/bricked nRF52 board. Skips building and flashing following a reset unless explicitly configured otherwise.
