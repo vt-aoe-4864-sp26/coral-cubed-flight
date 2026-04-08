@@ -178,10 +178,8 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
             // It's a reply to our command. Close the loop silently.
             send_reply = 0; 
         } else {
-            // Unsolicited ACK! Treat it as a ping and bounce it back.
-            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
-            send_reply = 1;
+            // Unsolicited ACK or timed-out request. Drop it silently to prevent ACK storms.
+            send_reply = 0;
         }
         break;
       }
