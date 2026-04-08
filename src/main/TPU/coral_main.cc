@@ -16,15 +16,15 @@
 #include "libs/tensorflow/utils.h"
 
 // local apps
-#include "uart.h"
-#include "inference.h"
+#include "libs/uart.h"
+#include "libs/inference.h"
+#include "configs.h"
 
-// ===== CONFIG ===== //
-constexpr char kModelPath[] = "/models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite";
-constexpr char kImagePath[] = "/images/denby.rgb";
-constexpr int kTensorArenaSize = 8 * 1024 * 1024;
+
 
 // ===== APPS ===== //
+
+STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, coral_cubed::kTensorArenaSize);
 
 extern "C" [[noreturn]] void app_main(void *param)
 {
@@ -34,6 +34,9 @@ extern "C" [[noreturn]] void app_main(void *param)
   // Turn on Status LED to show the board is powered
   coralmicro::LedSet(coralmicro::Led::kStatus, true);
 
+  // Initialize Edge TPU once on boot
+  coral_cubed::InitEdgeTpu();
+
   // Spin up the TAB Protocol UART Task
   StartUartTask();
 
@@ -41,12 +44,23 @@ extern "C" [[noreturn]] void app_main(void *param)
   // you can spawn a separate InferenceTask here.
   while (true)
   {
-    // Example: If an inference task finishes, you would call:
-    // uint8_t mock_results[] = {0xDE, 0xAD, 0xBE, 0xEF};
-    // SendInferenceResult(mock_results, sizeof(mock_results));
+    if (g_run_inference) {
+        g_run_inference = false;
+        printf("Running Demo Inference...\r\n");
 
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Sleep for 1 second
+        coral_cubed::ModelRunner runner(coral_cubed::kModelPath, tensor_arena, coral_cubed::kTensorArenaSize);
+
+        if (runner.IsValid())
+        {
+            if (runner.RunInferenceFromLfs(coral_cubed::kImagePath))
+            {
+                auto results = runner.GetDetectionResults();
+                printf("%s\r\n", coralmicro::tensorflow::FormatDetectionOutput(results).c_str());
+                SendInferenceResult((uint8_t*)"INFER_OK", 8);
+            }
+        }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(100)); // Sleep for 100ms
   }
 }
-
-

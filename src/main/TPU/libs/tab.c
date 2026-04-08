@@ -11,7 +11,7 @@
 #include <stdint.h> // uint8_t, uint32_t
 
 // TAB
-#include <tab.h>    // TAB header
+#include "tab.h"    // TAB header
 
 // External handler functions
 extern int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);

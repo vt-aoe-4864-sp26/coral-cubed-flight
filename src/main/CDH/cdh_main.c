@@ -54,7 +54,7 @@ int main(void) {
 
     // 4. Sync with COM
     printk("COM is powered. Starting Handshake...\n");
-    check_com_online();
+    check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");
     
     static tx_cmd_buff_t local_demo_tx = {.size=CMD_MAX_LEN};
