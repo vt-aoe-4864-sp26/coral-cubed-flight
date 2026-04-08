@@ -18,7 +18,8 @@ include_directories(${CORAL_MICRO_PATH})
 add_subdirectory(${CORAL_MICRO_PATH} coralmicro_build)
 
 add_executable_m7(coralmicro-app
-        demo.cc
+        coral_main.cc
+        libs/uart.cc
         DATA
         ${PROJECT_SOURCE_DIR}/models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite
 )
