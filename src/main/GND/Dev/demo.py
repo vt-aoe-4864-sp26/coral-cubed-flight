@@ -57,7 +57,8 @@ class PCB:
             self.serial_port.write(bytes(cmd.data[:packet_len]))
             
             # 3. Wait for the complete reply
-            while self.rx_cmd_buff.state != RxCmdBuffState.COMPLETE:
+            reply_found = False
+            while not reply_found:
                 
                 # Check how many bytes the OS has received
                 waiting = self.serial_port.in_waiting
@@ -66,6 +67,21 @@ class PCB:
                     bytes_read = self.serial_port.read(waiting)
                     for b in bytes_read:
                         self.rx_cmd_buff.append_byte(b)
+                        
+                        # 4. Check if the state machine successfully completed a packet
+                        if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
+                            if self.rx_cmd_buff.bus_msg_id == self.msgid:
+                                print('reply: ' + str(self.rx_cmd_buff) + '\n')
+                                
+                                # cleanup and increment for next message
+                                cmd.clear()
+                                self.rx_cmd_buff.clear()
+                                self.msgid += 1
+                                time.sleep(1.0)
+                                return True
+                            else:
+                                print(f"ignoring stale reply with msg_id 0x{self.rx_cmd_buff.bus_msg_id:04x}")
+                                self.rx_cmd_buff.clear()
                 else:
                     # Yield the thread briefly so we don't cook the CPU
                     time.sleep(0.001)
@@ -73,17 +89,6 @@ class PCB:
                 if time.time() - start_time > timeout:
                     print(f"timeout waiting for reply on attempt {attempt + 1}/{retries}")
                     break
-                    
-            # 4. Check if the state machine successfully completed the packet
-            if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
-                print('reply: ' + str(self.rx_cmd_buff) + '\n')
-                
-                # cleanup and increment for next message
-                cmd.clear()
-                self.rx_cmd_buff.clear()
-                self.msgid += 1
-                time.sleep(1.0)
-                return True
 
         # If we exit the for-loop, all retries failed
         print("failed to receive valid reply after all retries.\n")
