@@ -7,6 +7,7 @@
 #include "tab.h"
 #include "radio.h"
 #include "uart.h"
+#include <zephyr/sys/printk.h>
 
 // ========== Macros ========== //
 #define NVMC_CONFIG MMIO32(NVMC_BASE + 0x504)
@@ -93,6 +94,9 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
     if (rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty)
     {
         uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
+        uint8_t src_id  = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0x0F);
+        uint8_t opcode  = rx_cmd_buff_o->data[OPCODE_INDEX];
+        printk("\n[RX] Packet Received! SRC: %d, DST: %d, OPCODE: 0x%02x\n", src_id, dest_id, opcode);
 
         if (dest_id == COM)
         {
@@ -118,8 +122,12 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
         return;
 
     uint8_t dest_id = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
+    uint8_t src_id  = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0x0F);
+    uint8_t opcode  = tx_cmd_buff_o->data[OPCODE_INDEX];
     const struct device *target_uart = NULL;
     int send_to_radio = 0;
+
+    printk("[TX] Routing packet. SRC: %d, DST: %d, OPCODE: 0x%02x (Size: %d)\n", src_id, dest_id, opcode, tx_cmd_buff_o->end_index);
 
 #if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
     // Ground Station Topology

@@ -41,13 +41,12 @@ int main(void)
     init_leds();
     init_gpio();
 
-    // 1. HARDWARE POWER SEQUENCING (Prevent USB Drops!)
-    // Power on COM immediately. The inrush current will cause a brownout,
-    // but since USB isn't started yet, it won't crash the terminal!
+    // Power on COM immediately. The inrush current will may cause a brownout,
+    // but since USB isn't started yet, it won't crash the terminal
     power_on_com();
     k_msleep(1500); // Wait for voltage rails to fully recover
 
-    // 2. NOW it is safe to boot USB!
+    // NOW boot usb
     if (init_usb_console() == 0)
     {
         init_usb_uart();
@@ -55,13 +54,13 @@ int main(void)
         printk("Console & USB UART Live\n");
     }
 
-    // 3. Boot Hardware UARTs
+    // Boot Hardware UART
     init_hardware_uarts();
     printk("Hardware UARTs Live\n");
 
-    // 4. Sync with COM
+    // Sync with COM
     printk("COM is powered. Starting Handshake...\n");
-    k_msleep(50000);
+    k_msleep(50000); //yikes
     gpio_pin_toggle_dt(&led1);
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");
@@ -73,7 +72,7 @@ int main(void)
     // com_start_demo(&dummy_rx, &local_demo_tx);
     route_tx_packet(&local_demo_tx);
 
-    // 5. Blink forever
+    // Blink forever
     while (1)
     {
         // printk("CDH Heartbeat - System Nominal.\n");
