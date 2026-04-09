@@ -8,8 +8,8 @@
 #include "../configs.h"
 
 // Static buffers for the TAB state machine
-static rx_cmd_buff_t rx_buff = { .state = RX_CMD_BUFF_STATE_START_BYTE_0, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .route_id = 0, .bus_msg_id = 0, .data = {0} };
-static tx_cmd_buff_t tx_buff = { .empty = 1, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .data = {0} };
+static rx_cmd_buff_t rx_buff = {.state = RX_CMD_BUFF_STATE_START_BYTE_0, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .route_id = 0, .bus_msg_id = 0, .data = {0}};
+static tx_cmd_buff_t tx_buff = {.empty = 1, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .data = {0}};
 volatile bool g_run_inference = false;
 
 // --- Required TAB Protocol Implementations ---
@@ -27,36 +27,39 @@ extern "C"
             return 0; // Not for us
         }
 
-        if (common_data_buff_i.end_index < 2) return 0;
+        if (common_data_buff_i.end_index < 2)
+            return 0;
         uint8_t var_code = common_data_buff_i.data[0];
-        uint8_t var_len  = common_data_buff_i.data[1];
-        if (common_data_buff_i.end_index < (size_t)(2 + var_len)) return 0;
+        uint8_t var_len = common_data_buff_i.data[1];
+        if (common_data_buff_i.end_index < (size_t)(2 + var_len))
+            return 0;
 
-        uint8_t* val_ptr = &common_data_buff_i.data[2];
+        uint8_t *val_ptr = &common_data_buff_i.data[2];
 
-        switch(var_code) {
-            case VAR_CODE_CORAL_WAKE:
-                //printf("TAB Command: Coral Wake (%d)\r\n", *val_ptr);
-                // TODO: implement wake
-                return 1;
-            case VAR_CODE_CORAL_CAM_ON:
-                //printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
-                // TODO: implement cam on
-                return 1;
-            case VAR_CODE_CORAL_INFER:
-            case VAR_CODE_RUN_DEMO:
-                //printf("TAB Command Received: Triggering Demo Inference...\r\n");
-                g_run_inference = true;
-                return 1;
-            default:
-                return 0; // Unknown command, tab.c will NACK
+        switch (var_code)
+        {
+        case VAR_CODE_CORAL_WAKE:
+            // printf("TAB Command: Coral Wake (%d)\r\n", *val_ptr);
+            //  TODO: implement wake
+            return 1;
+        case VAR_CODE_CORAL_CAM_ON:
+            // printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
+            //  TODO: implement cam on
+            return 1;
+        case VAR_CODE_CORAL_INFER:
+        case VAR_CODE_RUN_DEMO:
+            // printf("TAB Command Received: Triggering Demo Inference...\r\n");
+            g_run_inference = true;
+            return 1;
+        default:
+            return 0; // Unknown command, tab.c will NACK
         }
     }
 
     // Empty bootloader stubs for generic tab.c library
     int handle_bootloader_erase(void) { return 0; }
-    int handle_bootloader_write_page(rx_cmd_buff_t* rx_cmd_buff) { return 0; }
-    int handle_bootloader_write_page_addr32(rx_cmd_buff_t* rx_cmd_buff) { return 0; }
+    int handle_bootloader_write_page(rx_cmd_buff_t *rx_cmd_buff) { return 0; }
+    int handle_bootloader_write_page_addr32(rx_cmd_buff_t *rx_cmd_buff) { return 0; }
     int handle_bootloader_jump(void) { return 0; }
     int bootloader_active(void) { return 0; }
 
@@ -82,15 +85,16 @@ void SendInferenceResult(uint8_t *result_data, size_t len)
     uint8_t payload[256];
     payload[0] = VAR_CODE_INFERENCE_RESULT;
     payload[1] = len;
-    
+
     // Copy result_data
-    for(size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < len; ++i)
+    {
         payload[2 + i] = result_data[i];
     }
 
     // Package it up and route it to COM (which will route to GND)
     // 0x16 is COMMON_DATA_OPCODE
-    msg_to_com(&rx_buff, &tx_buff, 0x16, payload, len + 2);
+    msg_to_gnd(&rx_buff, &tx_buff, 0x16, payload, len + 2);
     FlushTxBuffer();
 }
 

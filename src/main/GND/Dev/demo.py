@@ -191,9 +191,15 @@ class PCB:
         
     def cdh_coral_infer(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
         cmd.common_data([0x0A, 0x01, val])
         self._send_and_wait(cmd)
+
+    def coral_run_demo(self, enable=True):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
+        cmd.common_data([0x0b, 0x01, 0x01])
+        self._send_and_wait(cmd)
+
         
     def wait_for_inference(self, timeout=60.0):
         print("waiting for autonomous inference results...")
@@ -258,7 +264,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyACM1' # default
+    port = '/dev/ttyACM0' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
@@ -266,62 +272,56 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print(f"initializing pcb communication on {port}...")
-    board = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
+    flatsat = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
     try:
         # wait for device and connect
-        board._wait_for_serial(timeout=60)
+        flatsat._wait_for_serial(timeout=60)
 
         input("\nthe device is connected. press ENTER to begin running tests...\n")
         time.sleep(1.0)
 
-        print("--- commencing tests ---")
-        print("alive")
-        board.handshake()
-        print("--- blinking ---") 
+        print("--- Commencing Tests ---")
+        print("--------------------------------")
+        print("Verify Connection to Ground Station")
+        flatsat.handshake()
+        print("--- Blinking Ground Station---") 
         
         # test leds - com
-        board.comg_blink_demo()
+        
+        flatsat.comg_blink_demo()
         print("blinked comg")
 
-        time.sleep(15.0) # time for the iee stack to boot
-
+        time.sleep(20.0) # time for the iee stack to boot
+        print("--- Blinking COM ---")
         # test leds - com
-        board.com_blink_demo()
+        flatsat.com_blink_demo()
         print("blinked com")
 
-        time.sleep(15.0) 
+        time.sleep(20.0) 
         
-        board.cdh_blink_demo()
+        print("--- Blinking CDH ---")
+        flatsat.cdh_blink_demo()
         print("blinked cdh")
 
-        time.sleep(15.0)
+        time.sleep(20.0)
 
-        # test common debug
-        board.common_debug('hello, world!')
 
-        print("--- testing payload routing & inference ---")
+        print("--- Testing Payload Routing & Inference ---")
 
         # enable payload eps
-        print("powering up payload board from cdh...")
-        board.cdh_enable_pay(enable=True)
+        print("Powering up Payload PCB from CDH...")
+        flatsat.cdh_enable_pay(enable=True)
         
         time.sleep(15.0)
 
-        print("waiting for freertos and edgetpu to boot...")
+        print("Waiting for FreeRTOS and Edge TPU to boot...")
         time.sleep(5.0)
-        
-        print("triggering coral inference loop...")
-        board.cdh_coral_infer(enable=True)
-        
-        board.wait_for_inference(timeout=15.0)
-        
-        print("halting inference...")
-        board.cdh_coral_infer(enable=False)
-        
-        print("powering down payload board...")
-        board.cdh_enable_pay(enable=False)
 
-        print("--- testing complete ---")
+        flatsat.coral_run_demo()
+        time.sleep(5.0)
+        flatsat.wait_for_inference()
+        
+        print("--- Testing Complete ---")
     except Exception as e:
         print(f"error during execution: {e}")
         sys.exit(1)
