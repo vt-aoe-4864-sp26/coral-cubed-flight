@@ -11,17 +11,17 @@
 namespace coral_cubed
 {
 
-    bool InitEdgeTpu()
+    std::shared_ptr<coralmicro::EdgeTpuContext> InitEdgeTpu()
     {
         printf("Powering up and Initializing Edge TPU...\r\n");
         auto tpu_context = coralmicro::EdgeTpuManager::GetSingleton()->OpenDevice();
         if (!tpu_context)
         {
             printf("ERROR: Failed to get EdgeTpu context!\r\n");
-            return false;
+            return nullptr;
         }
         printf("Edge TPU Initialized successfully.\r\n");
-        return true;
+        return tpu_context;
     }
 
     ModelRunner::ModelRunner(const char *model_path, uint8_t *tensor_arena, size_t arena_size)

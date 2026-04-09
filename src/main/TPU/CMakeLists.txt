@@ -25,6 +25,7 @@ add_executable_m7(coralmicro-app
         libs/tab.c
         DATA
         ${PROJECT_SOURCE_DIR}/models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite
+        ${PROJECT_SOURCE_DIR}/images/denby.rgb
 )
 
 target_link_libraries(coralmicro-app

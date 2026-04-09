@@ -4,17 +4,21 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <memory>
 
 #include "libs/tensorflow/detection.h"
 #include "third_party/tflite-micro/tensorflow/lite/micro/micro_error_reporter.h"
 #include "third_party/tflite-micro/tensorflow/lite/micro/micro_interpreter.h"
 #include "third_party/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h"
-
+namespace coralmicro
+{
+    class EdgeTpuContext;
+}
 namespace coral_cubed
 {
 
     // Initialize the Edge TPU Hardware. Call once on boot.
-    bool InitEdgeTpu();
+    std::shared_ptr<coralmicro::EdgeTpuContext> InitEdgeTpu();
 
     class ModelRunner
     {
