@@ -54,6 +54,7 @@ static int demo_init_nv_memory(void)
 #if defined(CONFIG_FLASH_JESD216_API)
     {
         uint8_t jedec_id[3] = {0};
+        bool jedec_ok = false;
 
         rc = flash_read_jedec_id(nvm_dev, jedec_id);
         if (rc != 0) {
@@ -61,18 +62,27 @@ static int demo_init_nv_memory(void)
             return -3;
         }
 
-        printk("NVM JEDEC ID: %02X %02X %02X\n",
+        /* Expected logical JEDEC ID for IS25LP128F: 9D 60 18
+         * Some paths may return the same 3 bytes rotated as 18 9D 60.
+         */
+        if ((jedec_id[0] == 0x9D) && (jedec_id[1] == 0x60) && (jedec_id[2] == 0x18)) {
+            jedec_ok = true;
+        } else if ((jedec_id[0] == 0x18) && (jedec_id[1] == 0x9D) && (jedec_id[2] == 0x60)) {
+            jedec_ok = true;
+            printk("NVM warning: JEDEC ID returned in rotated order: %02X %02X %02X\n",
+                   jedec_id[0], jedec_id[1], jedec_id[2]);
+        }
+
+        if (!jedec_ok) {
+            printk("NVM init failed: unexpected JEDEC ID %02X %02X %02X\n",
+                   jedec_id[0], jedec_id[1], jedec_id[2]);
+            return -4;
+        }
+
+        printk("NVM JEDEC ID OK: %02X %02X %02X\n",
                jedec_id[0], jedec_id[1], jedec_id[2]);
     }
 #endif
-
-    printk("NVM ready: %s, size=%llu bytes, write_block=%zu\n",
-           nvm_dev->name,
-           (unsigned long long)flash_size,
-           flash_get_write_block_size(nvm_dev));
-
-    initialized = 1;
-    return 0;
 }
 
 static int demo_flash_test_deadbeef(void)
