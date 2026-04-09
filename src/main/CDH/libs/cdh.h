@@ -9,6 +9,7 @@
 #ifndef CDH_H
 #define CDH_H
 
+
 // TAB header //
 #include <tab.h>
 
@@ -47,6 +48,7 @@
 // ========== Payload Commands
 #define VAR_CODE_CORAL_WAKE     ((uint8_t)0x08)
 #define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x09)
+#define VAR_CODE_FLASH_TEST     ((uint8_t)0x010)
 #define VAR_CODE_CORAL_INFER    ((uint8_t)0x0a)
 
 // ========== Testing & Debug
@@ -105,5 +107,8 @@ void com_disable_tx(rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 
 void process_rx_packet(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
 void route_tx_packet(tx_cmd_buff_t* tx_cmd_buff_o);
+int cdh_init_nv_memory(void);
+int cdh_flash_test_deadbeef(void);
+
 
 #endif

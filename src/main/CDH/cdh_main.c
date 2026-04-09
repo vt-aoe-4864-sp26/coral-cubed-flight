@@ -2,8 +2,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <cdh.h>
-#include <zephyr/device.h>
-#include <zephyr/drivers/flash.h>
 
 extern const struct gpio_dt_spec led1;
 extern const struct gpio_dt_spec led2;
@@ -66,58 +64,7 @@ int main(void) {
     // com_start_demo(&dummy_rx, &local_demo_tx);
     route_tx_packet(&local_demo_tx);
 
-    
-int cdh_init_nv_memory(void)
-{
-    static int initialized;
-    const struct device *nvm_dev = DEVICE_DT_GET(DT_NODELABEL(is25lp128));
-    uint64_t flash_size = 0;
-    int rc;
 
-    if (initialized) {
-        return 0;
-    }
-
-    if (!device_is_ready(nvm_dev)) {
-        printk("NVM init failed: is25lp128 device not ready.\n");
-        return -1;
-    }
-
-    rc = flash_get_size(nvm_dev, &flash_size);
-    if (rc != 0) {
-        printk("NVM init failed: flash_get_size() error %d\n", rc);
-        return -2;
-    }
-
-#if defined(CONFIG_FLASH_JESD216_API)
-    {
-        uint8_t jedec_id[3] = {0};
-
-        rc = flash_read_jedec_id(nvm_dev, jedec_id);
-        if (rc != 0) {
-            printk("NVM init failed: flash_read_jedec_id() error %d\n", rc);
-            return -3;
-        }
-
-        if ((jedec_id[0] != 0x9D) || (jedec_id[1] != 0x60) || (jedec_id[2] != 0x18)) {
-            printk("NVM init failed: unexpected JEDEC ID %02X %02X %02X\n",
-                   jedec_id[0], jedec_id[1], jedec_id[2]);
-            return -4;
-        }
-
-        printk("NVM JEDEC ID OK: %02X %02X %02X\n",
-               jedec_id[0], jedec_id[1], jedec_id[2]);
-    }
-#endif
-
-    printk("NVM ready: %s, size=%llu bytes, write_block=%zu\n",
-           nvm_dev->name,
-           (unsigned long long)flash_size,
-           flash_get_write_block_size(nvm_dev));
-
-    initialized = 1;
-    return 0;
-}
 
     // 5. Blink forever
     while (1) {
