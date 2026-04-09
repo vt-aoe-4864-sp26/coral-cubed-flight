@@ -41,31 +41,41 @@ class PCB:
     
     def _send_and_wait(self, cmd, timeout=5.0, retries=3):
         """helper to handle the repetitive tx/rx loop for all commands."""
+        
+        # Log the command BEFORE sending so you know what is happening if it times out
+        print('txcmd: ' + str(cmd))
+        
         for attempt in range(retries):
-            byte_i = 0
             start_time = time.time()
             self.rx_cmd_buff.clear()
             
+            # 1. Purge the OS buffer of any stale ACKs/echoes before transmitting
+            self.serial_port.reset_input_buffer()
+            
+            # 2. Blast the entire payload at once for max USB throughput
+            packet_len = cmd.get_byte_count()
+            self.serial_port.write(bytes(cmd.data[:packet_len]))
+            
+            # 3. Wait for the complete reply
             while self.rx_cmd_buff.state != RxCmdBuffState.COMPLETE:
-                # transmit
-                if byte_i < cmd.get_byte_count():
-                    self.serial_port.write(cmd.data[byte_i].to_bytes(1, byteorder='big'))
-                    byte_i += 1
                 
-                # receive
-                if self.serial_port.in_waiting > 0:
-                    bytes_read = self.serial_port.read(1)
+                # Check how many bytes the OS has received
+                waiting = self.serial_port.in_waiting
+                if waiting > 0:
+                    # Read them all in one chunk, then feed them to the state machine
+                    bytes_read = self.serial_port.read(waiting)
                     for b in bytes_read:
                         self.rx_cmd_buff.append_byte(b)
                 else:
+                    # Yield the thread briefly so we don't cook the CPU
                     time.sleep(0.001)
 
                 if time.time() - start_time > timeout:
                     print(f"timeout waiting for reply on attempt {attempt + 1}/{retries}")
                     break
                     
+            # 4. Check if the state machine successfully completed the packet
             if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
-                print('txcmd: ' + str(cmd))
                 print('reply: ' + str(self.rx_cmd_buff) + '\n')
                 
                 # cleanup and increment for next message
@@ -75,7 +85,8 @@ class PCB:
                 time.sleep(1.0)
                 return True
 
-        print("failed to send command after all retries.\n")
+        # If we exit the for-loop, all retries failed
+        print("failed to receive valid reply after all retries.\n")
         cmd.clear()
         self.rx_cmd_buff.clear()
         self.msgid += 1
@@ -267,14 +278,18 @@ if __name__ == '__main__':
         board.comg_blink_demo()
         print("blinked comg")
 
-        time.sleep(10.0) # time for the iee stack to boot
+        time.sleep(15.0) # time for the iee stack to boot
 
         # test leds - com
         board.com_blink_demo()
         print("blinked com")
+
+        time.sleep(15.0) 
         
         board.cdh_blink_demo()
         print("blinked cdh")
+
+        time.sleep(15.0)
 
         # test common debug
         board.common_debug('hello, world!')
@@ -285,7 +300,9 @@ if __name__ == '__main__':
         print("powering up payload board from cdh...")
         board.cdh_enable_pay(enable=True)
         
-        print("waiting 5 seconds for freertos and edgetpu to boot...")
+        time.sleep(15.0)
+
+        print("waiting for freertos and edgetpu to boot...")
         time.sleep(5.0)
         
         print("triggering coral inference loop...")
