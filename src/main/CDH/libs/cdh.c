@@ -203,10 +203,12 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
   if (target_dev != NULL && device_is_ready(target_dev))
   {
     while (!(tx_cmd_buff_o->empty))
+      uart_irq_rx_disable(target_dev);
     {
       uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
       uart_poll_out(target_dev, b);
     }
+    uart_irq_rx_enable(target_dev);
   }
   else
   {
