@@ -160,7 +160,7 @@ class PCB:
         cmd.common_data([0x06, 0x01, 0x01])
         self._send_and_wait(cmd)
         
-    # ==== NEW: Coral Micro Payload Commands ==== #
+    # ==== Coral Micro Payload Commands ==== #
     def cdh_coral_wake(self, enable=True):
         val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
@@ -178,6 +178,36 @@ class PCB:
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
         cmd.common_data([0x0A, 0x01, val])
         self._send_and_wait(cmd)
+        
+    def wait_for_inference(self, timeout=60.0):
+        print("waiting for autonomous inference results...")
+        start_time = time.time()
+        self.rx_cmd_buff.clear()
+        
+        while time.time() - start_time < timeout:
+            if self.serial_port.in_waiting > 0:
+                bytes_read = self.serial_port.read(1)
+                for b in bytes_read:
+                    self.rx_cmd_buff.append_byte(b)
+                    
+                    if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
+                        if self.rx_cmd_buff.data[8] == COMMON_DATA_OPCODE:
+                            if self.rx_cmd_buff.data[9] == 0x0c: # VAR_CODE_INFERENCE_RESULT
+                                result_len = self.rx_cmd_buff.data[10]
+                                result_bytes = self.rx_cmd_buff.data[11:11+result_len]
+                                try:
+                                    result_str = bytes(result_bytes).decode('utf-8')
+                                    print(f"--- Inference Result: {result_str} ---")
+                                except UnicodeDecodeError:
+                                    print(f"--- Inference Result (raw bytes): {result_bytes} ---")
+                                self.rx_cmd_buff.clear()
+                                return True
+                        self.rx_cmd_buff.clear()
+            else:
+                time.sleep(0.001)
+                
+        print("timeout waiting for inference result.\n")
+        return False
     # ========================================== #
 
     def enable_rf(self, enable=True):
@@ -212,7 +242,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyACM0' # default
+    port = '/dev/ttyACM1' # default
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
@@ -261,8 +291,7 @@ if __name__ == '__main__':
         print("triggering coral inference loop...")
         board.cdh_coral_infer(enable=True)
         
-        print("inference running. observing for 10 seconds...")
-        time.sleep(10.0)
+        board.wait_for_inference(timeout=15.0)
         
         print("halting inference...")
         board.cdh_coral_infer(enable=False)

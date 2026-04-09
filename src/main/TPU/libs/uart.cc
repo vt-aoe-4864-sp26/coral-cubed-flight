@@ -36,16 +36,16 @@ extern "C"
 
         switch(var_code) {
             case VAR_CODE_CORAL_WAKE:
-                printf("TAB Command: Coral Wake (%d)\r\n", *val_ptr);
+                //printf("TAB Command: Coral Wake (%d)\r\n", *val_ptr);
                 // TODO: implement wake
                 return 1;
             case VAR_CODE_CORAL_CAM_ON:
-                printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
+                //printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
                 // TODO: implement cam on
                 return 1;
             case VAR_CODE_CORAL_INFER:
             case VAR_CODE_RUN_DEMO:
-                printf("TAB Command Received: Triggering Demo Inference...\r\n");
+                //printf("TAB Command Received: Triggering Demo Inference...\r\n");
                 g_run_inference = true;
                 return 1;
             default:
@@ -70,12 +70,12 @@ static void FlushTxBuffer()
     while (!tx_buff.empty)
     {
         uint8_t b = pop_tx_cmd_buff(&tx_buff);
-        // TODO: Replace ConsoleM7 with your specific LPUART hardware write
+        // TODO: Replace ConsoleM7 with LPUART hardware write
         coralmicro::ConsoleM7::GetSingleton()->Write((char *)&b, 1);
     }
 }
 
-// Exposed function for your TPU task to call when inference is complete
+// Exposed function for TPU task to call when inference is complete
 void SendInferenceResult(uint8_t *result_data, size_t len)
 {
     // Use the common data opcode (0x16) array payload
@@ -107,7 +107,7 @@ void SendInferenceResult(uint8_t *result_data, size_t len)
     uint8_t ch;
     while (true)
     {
-        // Read 1 byte from UART (blocking or polling depending on your driver setup)
+        // Read 1 byte from UART (blocking or polling depending driver setup)
         int bytes = coralmicro::ConsoleM7::GetSingleton()->Read((char *)&ch, 1);
 
         if (bytes == 1)

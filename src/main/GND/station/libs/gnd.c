@@ -36,27 +36,11 @@ void init_leds(void)
 }
 
 // ========== Thread 2: Application Tasks (Priority 7) ========== //
-// ========== Thread 2: Application Tasks (Priority 7) ========== //
 void app_thread_entry(void *p1, void *p2, void *p3)
 {
     while (1)
     {
-        // Build a manual payload for COM blink
-        k_msleep(2000);
-        tx_cmd_buff_t ping_tx = {.size = CMD_MAX_LEN};
-        clear_tx_cmd_buff(&ping_tx);
-        rx_cmd_buff_t dummy_rx = {.route_id = COMG, .bus_msg_id = 0};
-
-        uint8_t my_payload[] = {VAR_CODE_BLINK_COM, 0x01, VAR_ENABLE};
-
-        msg_to_com(&dummy_rx, &ping_tx, COMMON_DATA_OPCODE, my_payload, 3);
-        ping_tx.data[ROUTE_INDEX] = (COM << 4) | COMG;
-
-        // Blast the ping
-        route_tx_packet(&ping_tx);
-
-        // Act as our 2-second delay timer
-        uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_MSEC(2000));
+        uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_FOREVER);
 
         if (events & EVENT_BLINK_DEMO)
         {
@@ -73,30 +57,30 @@ void app_thread_entry(void *p1, void *p2, void *p3)
 
         if (events & EVENT_RUN_DEMO)
         {
-            k_event_clear(&app_events, EVENT_RUN_DEMO);
+            // k_event_clear(&app_events, EVENT_RUN_DEMO);
 
-            tx_cmd_buff_t demo_tx = {.size = CMD_MAX_LEN};
-            clear_tx_cmd_buff(&demo_tx);
+            // tx_cmd_buff_t demo_tx = {.size = CMD_MAX_LEN};
+            // clear_tx_cmd_buff(&demo_tx);
 
-            k_event_post(&app_events, EVENT_BLINK_DEMO);
-            k_msleep(1000);
+            // k_event_post(&app_events, EVENT_BLINK_DEMO);
+            // k_msleep(1000); 
 
-            cdh_blink_demo(&dummy_rx, &demo_tx);
-            route_tx_packet(&demo_tx);
-            k_msleep(1000);
+            // cdh_blink_demo(&dummy_rx, &demo_tx);
+            // route_tx_packet(&demo_tx);
+            // k_msleep(1000);
 
-            enable_rf();
-            k_msleep(1000);
-            enable_rx();
-            k_msleep(1000);
-            enable_tx();
-            k_msleep(1000);
-            disable_tx();
-            disable_rf();
+            // enable_rf();
+            // k_msleep(1000);
+            // enable_rx();
+            // k_msleep(1000);
+            // enable_tx();
+            // k_msleep(1000);
+            // disable_tx();
+            // disable_rf();
 
-            clear_tx_cmd_buff(&demo_tx);
-            cdh_enable_pay(&dummy_rx, &demo_tx);
-            route_tx_packet(&demo_tx);
+            // clear_tx_cmd_buff(&demo_tx);
+            // cdh_enable_pay(&dummy_rx, &demo_tx);
+            // route_tx_packet(&demo_tx);
         }
     }
 }
@@ -167,11 +151,14 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {
+        uart_irq_rx_disable(target_uart);
         while (!(tx_cmd_buff_o->empty))
         {
+            
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_uart, b);
         }
+        uart_irq_rx_enable(target_uart);
         gpio_pin_toggle_dt(&led2);
     }
     else

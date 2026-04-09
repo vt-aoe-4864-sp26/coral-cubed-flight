@@ -152,11 +152,15 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {
+        uart_irq_rx_disable(target_uart); // Disable the interrupt during transmission
+
         while (!(tx_cmd_buff_o->empty))
         {
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_uart, b);
         }
+
+        uart_irq_rx_enable(target_uart); // re-enable interrupts
         gpio_pin_toggle_dt(&led2);
     }
     else

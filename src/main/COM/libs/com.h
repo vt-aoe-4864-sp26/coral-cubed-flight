@@ -24,6 +24,7 @@
 #define VAR_CODE_CORAL_CAM_ON      ((uint8_t)0x09)
 #define VAR_CODE_CORAL_INFER       ((uint8_t)0x0a)
 #define VAR_CODE_RUN_DEMO          ((uint8_t)0x0b)
+#define VAR_CODE_INFERENCE_RESULT  ((uint8_t)0x0c)
 #define VAR_ENABLE                 ((uint8_t)0x01)
 #define VAR_DISABLE                ((uint8_t)0x02)
 

@@ -51,6 +51,7 @@
 
 // ========== Testing & Debug
 #define VAR_CODE_RUN_DEMO       ((uint8_t)0x0b)
+#define VAR_CODE_INFERENCE_RESULT ((uint8_t)0x0c)
 
 // ========== Common_Data_Vars
 #define VAR_ENABLE              ((uint8_t)0x01)
