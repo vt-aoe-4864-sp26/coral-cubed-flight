@@ -40,6 +40,21 @@ void app_thread_entry(void *p1, void *p2, void *p3)
 {
     while (1)
     {
+        // Optional COMG  demo to send COM a message to blink.
+        // k_msleep(2000);
+        // tx_cmd_buff_t ping_tx = {.size = CMD_MAX_LEN};
+        // clear_tx_cmd_buff(&ping_tx);
+        // rx_cmd_buff_t dummy_rx = {.route_id = COMG, .bus_msg_id = 0};
+
+        // uint8_t my_payload[] = {VAR_CODE_BLINK_COM, 0x01, VAR_ENABLE};
+
+        // msg_to_com(&dummy_rx, &ping_tx, COMMON_DATA_OPCODE, my_payload, 3);
+        // ping_tx.data[ROUTE_INDEX] = (COM << 4) | COMG;
+
+        // // Blast the ping
+        // route_tx_packet(&ping_tx);
+
+        // Act as our 2-second delay timer
         uint32_t events = k_event_wait(&app_events, (EVENT_BLINK_DEMO | EVENT_RUN_DEMO), false, K_FOREVER);
 
         if (events & EVENT_BLINK_DEMO)

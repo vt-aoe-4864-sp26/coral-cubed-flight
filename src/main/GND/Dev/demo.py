@@ -291,19 +291,19 @@ if __name__ == '__main__':
         flatsat.comg_blink_demo()
         print("blinked comg")
 
-        time.sleep(20.0) # time for the iee stack to boot
+        time.sleep(10.0) # time for the iee stack to boot
         print("--- Blinking COM ---")
         # test leds - com
         flatsat.com_blink_demo()
         print("blinked com")
 
-        time.sleep(20.0) 
+        time.sleep(10.0) 
         
         print("--- Blinking CDH ---")
         flatsat.cdh_blink_demo()
         print("blinked cdh")
 
-        time.sleep(20.0)
+        time.sleep(10.0)
 
 
         print("--- Testing Payload Routing & Inference ---")

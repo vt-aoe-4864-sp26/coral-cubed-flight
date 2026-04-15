@@ -1,27 +1,33 @@
-# DEMO 3/19
+# DEMO 4/9
 
 ## Order Of Operations
 
-### 1. Power On
+### 1. Verify Local Connection
 
-### 2. Initialize Peripherals
+Send a Message Back and Forth
 
-Clocks, LEDs, GPIO
+Blink Locally
 
-### 3. Power on COM via GPIO
+### 2. Send Blink Message to COM
 
-Sends a signal to EPS to open COM_3V3
+COM sees the message ID it for it and it will process it locally.
 
-### 4. UART Handshake
+### 3. Send Blink Message to CDH
 
-CDH will blink util it gets a UART connection with COM
+This message passes through COM, and COM routes the message ID to its UART port for CDH.
 
-CDH prompts COM until it recieves a return, then blinking ends
+### 4. Command PLD to  Perform Inference
 
-### 5. Blink LEDs at Different Rates on Both Boards
+COMG sends over RF, Recieved by COM, passed to CDH, and then finally routed to the Coral.
 
-First at one speed, then faster for both bords
+This inference is performed on a statically defined image from nonvolatile storage.
 
-### 6. Enable the Payload via GPIO
+![denby](TPU/images/denby.png)
 
-Coral Micro runs on 5V, so as stand-in it waits for the signal from PAY_EN to begin inference
+A successul inference will return the message below:
+
+```bash
+INFER_OK
+```
+
+That message is routed from PLD, through CDH to COM, blasted down through RF, recieved by COMG, and sent up over UART to the Host PC.
