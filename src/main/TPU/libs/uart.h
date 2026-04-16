@@ -10,5 +10,7 @@ extern "C"
 }
 
 extern volatile bool g_run_inference;
+
+
 void StartUartTask();
 void SendInferenceResult(uint8_t *result_data, size_t len);

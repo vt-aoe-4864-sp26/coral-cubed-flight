@@ -27,7 +27,7 @@ STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, coral_cubed::kTensorArenaSize);
 extern "C" [[noreturn]] void app_main(void *param)
 {
   (void)param;
-  //printf("Coral Cubed Payload Initializing...\r\n");
+  // printf("Coral Cubed Payload Initializing...\r\n");
 
   coralmicro::LedSet(coralmicro::Led::kStatus, true);
 
@@ -35,17 +35,19 @@ extern "C" [[noreturn]] void app_main(void *param)
   auto tpu_context = coral_cubed::InitEdgeTpu();
   if (!tpu_context)
   {
-    //printf("TPU Not Initialized...\r\n");
+    // printf("TPU Not Initialized...\r\n");
   }
 
   StartUartTask();
+  printf("TPU Initialized");
+
+  g_run_inference = true;
 
   while (true)
   {
     if (g_run_inference)
     {
-      g_run_inference = false;
-      //printf("Running Demo Inference...\r\n");
+      //g_run_inference = false;
 
       coral_cubed::ModelRunner runner(coral_cubed::kModelPath, tensor_arena, coral_cubed::kTensorArenaSize);
 
@@ -53,10 +55,20 @@ extern "C" [[noreturn]] void app_main(void *param)
       {
         if (runner.RunInferenceFromLfs(coral_cubed::kImagePath))
         {
+
           auto results = runner.GetDetectionResults();
-          //printf("%s\r\n", coralmicro::tensorflow::FormatDetectionOutput(results).c_str());
-          SendInferenceResult((uint8_t *)"INFER_OK", 8);
-          
+
+          // printf("Inference OK! Found %d face(s).\r\n", results.size());
+
+          // Loop through and print the results using basic C-types (no std::string!)
+          if (results.size() > 0)
+          {
+            SendInferenceResult((uint8_t *)"DENBY!", 6);
+          }
+          else
+          {
+            SendInferenceResult((uint8_t *)"NO_DENBY", 8);
+          }
         }
       }
     }
