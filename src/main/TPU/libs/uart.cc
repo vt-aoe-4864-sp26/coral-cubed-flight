@@ -10,7 +10,7 @@
 // Static buffers for the TAB state machine
 static rx_cmd_buff_t rx_buff = {.state = RX_CMD_BUFF_STATE_START_BYTE_0, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .route_id = 0, .bus_msg_id = 0, .data = {0}};
 static tx_cmd_buff_t tx_buff = {.empty = 1, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .data = {0}};
-volatile bool g_run_inference = false;
+volatile uint8_t g_run_inference = 0;
 
 // --- Required TAB Protocol Implementations ---
 
@@ -35,6 +35,7 @@ extern "C"
             return 0;
 
         uint8_t *val_ptr = &common_data_buff_i.data[2];
+        (void)val_ptr;
 
         switch (var_code)
         {
@@ -46,10 +47,13 @@ extern "C"
             // printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
             //  TODO: implement cam on
             return 1;
-        case VAR_CODE_CORAL_INFER:
+        case VAR_CODE_CORAL_INFER_DENBY:
         case VAR_CODE_RUN_DEMO:
             // printf("TAB Command Received: Triggering Demo Inference...\r\n");
-            g_run_inference = true;
+            g_run_inference = 1;
+            return 1;
+        case VAR_CODE_CORAL_INFER_BLK:
+            g_run_inference = 2;
             return 1;
         default:
             return 0; // Unknown command, tab.c will NACK
@@ -69,12 +73,15 @@ extern "C"
 
 static void FlushTxBuffer()
 {
-    // While there are bytes in the TX buffer, pop and write them to UART
-    while (!tx_buff.empty)
+    if (!tx_buff.empty)
     {
-        uint8_t b = pop_tx_cmd_buff(&tx_buff);
-        // TODO: Replace ConsoleM7 with LPUART hardware write
-        coralmicro::ConsoleM7::GetSingleton()->Write((char *)&b, 1);
+        int len = tx_buff.end_index - tx_buff.start_index;
+        if (len > 0)
+        {
+            // TODO: Replace ConsoleM7 with LPUART hardware write
+            coralmicro::ConsoleM7::GetSingleton()->Write((char *)&tx_buff.data[tx_buff.start_index], len);
+        }
+        clear_tx_cmd_buff(&tx_buff);
     }
 }
 

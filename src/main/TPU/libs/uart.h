@@ -9,7 +9,7 @@ extern "C"
 #include "tab.h"
 }
 
-extern volatile bool g_run_inference;
+extern volatile uint8_t g_run_inference;
 
 
 void StartUartTask();

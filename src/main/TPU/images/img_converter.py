@@ -25,7 +25,7 @@ if IS_INT8_MODEL:
     data = data.astype(np.int8)
 
 # Save as pure raw binary
-with open("denby.rgb", "wb") as f:
+with open("blk.rgb", "wb") as f:
     f.write(data.tobytes())
 
-print(f"Generated denby.rgb ({len(data.tobytes())} bytes)")
+print(f"Generated blk.rgb ({len(data.tobytes())} bytes)")

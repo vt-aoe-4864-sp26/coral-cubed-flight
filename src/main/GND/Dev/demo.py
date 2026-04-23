@@ -189,10 +189,16 @@ class PCB:
         cmd.common_data([0x09, 0x01, val])
         self._send_and_wait(cmd)
         
-    def cdh_coral_infer(self, enable=True):
+    def cdh_coral_infer_denby(self, enable=True):
         val = 0x01 if enable else 0x02
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
         cmd.common_data([0x0A, 0x01, val])
+        self._send_and_wait(cmd)
+
+    def cdh_coral_infer_blk(self, enable=True):
+        val = 0x01 if enable else 0x02
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
+        cmd.common_data([0x0D, 0x01, val])
         self._send_and_wait(cmd)
 
     def coral_run_demo(self, enable=True):
@@ -284,43 +290,44 @@ if __name__ == '__main__':
         print("--------------------------------")
         print("Verify Connection to Ground Station")
         flatsat.handshake()
-        print("--- Blinking Ground Station---") 
-        
+
+        # print("--- Blinking Ground Station---") 
+        # flatsat.comg_blink_demo()
+        # print("blinked comg")
+
+        # time.sleep(10.0) # time for the iee stack to boot
+        # print("--- Blinking COM ---")
         # test leds - com
+        # flatsat.com_blink_demo()
+        # print("blinked com")
+
+        # time.sleep(10.0) 
         
-        flatsat.comg_blink_demo()
-        print("blinked comg")
+        # print("--- Blinking CDH ---")
+        # flatsat.cdh_blink_demo()
+        # print("blinked cdh")
 
-        time.sleep(10.0) # time for the iee stack to boot
-        print("--- Blinking COM ---")
-        # test leds - com
-        flatsat.com_blink_demo()
-        print("blinked com")
+        # time.sleep(10.0)
 
-        time.sleep(10.0) 
+
+        # print("--- Testing Payload Routing & Inference ---")
+
+        # # enable payload eps
+        # print("Powering up Payload PCB from CDH...")
+        # flatsat.cdh_enable_pay(enable=True)
         
-        print("--- Blinking CDH ---")
-        flatsat.cdh_blink_demo()
-        print("blinked cdh")
+        # time.sleep(15.0)
 
-        time.sleep(10.0)
+        # print("Waiting for FreeRTOS and Edge TPU to boot...")
+        # time.sleep(5.0)
 
-
-        print("--- Testing Payload Routing & Inference ---")
-
-        # enable payload eps
-        print("Powering up Payload PCB from CDH...")
-        flatsat.cdh_enable_pay(enable=True)
-        
-        time.sleep(15.0)
-
-        print("Waiting for FreeRTOS and Edge TPU to boot...")
-        time.sleep(5.0)
-
-        flatsat.coral_run_demo()
+        flatsat.cdh_coral_infer_denby()
         time.sleep(5.0)
         flatsat.wait_for_inference()
-        
+
+        flatsat.cdh_coral_infer_blk()
+        flatsat.wait_for_inference()
+
         print("--- Testing Complete ---")
     except Exception as e:
         print(f"error during execution: {e}")

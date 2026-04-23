@@ -105,6 +105,9 @@ void disable_rx(void) { gpio_pin_set_dt(&fem_rx_en, 0); }
 // ========== TX Execution Helper ========== //
 static void execute_radio_tx(void)
 {
+    // Allow remote peer's RF front-end to transition to RX mode
+    k_msleep(25);
+    
     enable_tx();
     gpio_pin_set_dt(&led1, 1);
     k_busy_wait(30);
