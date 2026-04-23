@@ -47,7 +47,7 @@ extern "C" [[noreturn]] void app_main(void *param)
   {
     if (g_run_inference)
     {
-      //g_run_inference = false;
+      g_run_inference = true;
 
       coral_cubed::ModelRunner runner(coral_cubed::kModelPath, tensor_arena, coral_cubed::kTensorArenaSize);
 

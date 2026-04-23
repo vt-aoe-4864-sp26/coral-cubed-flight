@@ -78,7 +78,7 @@ void app_thread_entry(void *p1, void *p2, void *p3)
             // clear_tx_cmd_buff(&demo_tx);
 
             // k_event_post(&app_events, EVENT_BLINK_DEMO);
-            // k_msleep(1000); 
+            // k_msleep(1000);
 
             // cdh_blink_demo(&dummy_rx, &demo_tx);
             // route_tx_packet(&demo_tx);
@@ -162,14 +162,12 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     {
         radio_send_packet(tx_cmd_buff_o);
         clear_tx_cmd_buff(tx_cmd_buff_o);
-    
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {
         uart_irq_rx_disable(target_uart);
         while (!(tx_cmd_buff_o->empty))
         {
-            
             uint8_t b = pop_tx_cmd_buff(tx_cmd_buff_o);
             uart_poll_out(target_uart, b);
         }

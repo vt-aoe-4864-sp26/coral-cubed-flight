@@ -44,7 +44,6 @@ int main(void)
     // Power on COM immediately. The inrush current will may cause a brownout,
     // but since USB isn't started yet, it won't crash the terminal
     power_on_com();
-    power_on_pay();
     k_msleep(1500); // Wait for voltage rails to fully recover
 
     // NOW boot usb
@@ -61,7 +60,7 @@ int main(void)
 
     // Sync with COM
     printk("COM is powered. Starting Handshake...\n");
-    k_msleep(50000); // yikes
+    k_msleep(50000); //yikes
     gpio_pin_toggle_dt(&led1);
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");

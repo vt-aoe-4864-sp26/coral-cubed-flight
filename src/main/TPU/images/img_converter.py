@@ -7,7 +7,7 @@ TARGET_HEIGHT = 320
 IS_INT8_MODEL = False # Set to True if tensor type is 9
 
 # Open your source image
-img = Image.open("denby.png")
+img = Image.open("rect1.png")
 
 # Resize to the EXACT dimensions the tensor expects
 img = img.resize((TARGET_WIDTH, TARGET_HEIGHT))
