@@ -4,13 +4,30 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/shell/shell.h>
+#include <string.h>
+#include <stdbool.h>
 
-static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+/* ------------------------------------------------------------------ */
+/*  Hardware                                                           */
+/* ------------------------------------------------------------------ */
 
-static int cdh_init_nv_memory(void)
+static const struct gpio_dt_spec led1 =
+    GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+
+#define TEST_OFFSET     ((off_t)0x00100000)
+#define ERASE_SIZE      4096u
+#define MAX_MSG_LEN     (ERASE_SIZE - sizeof(uint32_t))
+
+/* ------------------------------------------------------------------ */
+/*  NVM init                                                           */
+/* ------------------------------------------------------------------ */
+
+int cdh_init_nv_memory(void)
 {
     static int initialized;
-    const struct device *nvm_dev = DEVICE_DT_GET(DT_NODELABEL(is25lp128));
+    const struct device *nvm_dev =
+        DEVICE_DT_GET(DT_NODELABEL(is25lp128));
     uint64_t flash_size = 0;
     int rc;
 
@@ -19,7 +36,7 @@ static int cdh_init_nv_memory(void)
     }
 
     if (!device_is_ready(nvm_dev)) {
-        printk("NVM init failed: is25lp128 device not ready.\n");
+        printk("NVM init failed: device not ready.\n");
         return -1;
     }
 
@@ -32,6 +49,7 @@ static int cdh_init_nv_memory(void)
 #if defined(CONFIG_FLASH_JESD216_API)
     {
         uint8_t jedec_id[3] = {0};
+        bool jedec_ok = false;
 
         rc = flash_read_jedec_id(nvm_dev, jedec_id);
         if (rc != 0) {
@@ -39,7 +57,16 @@ static int cdh_init_nv_memory(void)
             return -3;
         }
 
-        if ((jedec_id[0] != 0x9D) || (jedec_id[1] != 0x60) || (jedec_id[2] != 0x18)) {
+        if (jedec_id[0] == 0x9D && jedec_id[1] == 0x60 && jedec_id[2] == 0x18)
+            jedec_ok = true;
+
+        if (jedec_id[0] == 0x18 && jedec_id[1] == 0x9D && jedec_id[2] == 0x60) {
+            jedec_ok = true;
+            printk("NVM warning: JEDEC ID rotated: %02X %02X %02X\n",
+                   jedec_id[0], jedec_id[1], jedec_id[2]);
+        }
+
+        if (!jedec_ok) {
             printk("NVM init failed: unexpected JEDEC ID %02X %02X %02X\n",
                    jedec_id[0], jedec_id[1], jedec_id[2]);
             return -4;
@@ -59,48 +86,130 @@ static int cdh_init_nv_memory(void)
     return 0;
 }
 
-static int cdh_flash_test_deadbeef(void)
+/* ------------------------------------------------------------------ */
+/*  Core flash helpers — take shell instance for output               */
+/* ------------------------------------------------------------------ */
+
+static int flash_write_message(const struct shell *sh, const char *msg)
 {
-    const struct device *flash_dev = DEVICE_DT_GET(DT_NODELABEL(is25lp128));
-    const off_t test_offset = 0x00100000;
-    const size_t erase_size = 4096;
-    const uint32_t tx_value = 0xDEADBEEF;
-    uint32_t rx_value = 0;
+    const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(is25lp128));
+    uint32_t msg_len = (uint32_t)strlen(msg);
     int rc;
 
-    if (!device_is_ready(flash_dev)) {
-        printk("FLASH TEST: device not ready\n");
-        return -1;
+    if (msg_len == 0 || msg_len > MAX_MSG_LEN) {
+        shell_error(sh, "Message length %u out of range (1-%u)",
+                    msg_len, (unsigned)MAX_MSG_LEN);
+        return -EINVAL;
     }
 
-    rc = flash_erase(flash_dev, test_offset, erase_size);
+    shell_print(sh, "Erasing sector at 0x%08X...", (unsigned)TEST_OFFSET);
+    rc = flash_erase(dev, TEST_OFFSET, ERASE_SIZE);
     if (rc != 0) {
-        printk("FLASH TEST: erase failed (%d)\n", rc);
-        return -2;
+        shell_error(sh, "Erase failed (%d)", rc);
+        return rc;
     }
+    k_msleep(10);
 
-    rc = flash_write(flash_dev, test_offset, &tx_value, sizeof(tx_value));
+    rc = flash_write(dev, TEST_OFFSET, &msg_len, sizeof(msg_len));
     if (rc != 0) {
-        printk("FLASH TEST: write failed (%d)\n", rc);
-        return -3;
+        shell_error(sh, "Header write failed (%d)", rc);
+        return rc;
     }
 
-    rc = flash_read(flash_dev, test_offset, &rx_value, sizeof(rx_value));
+    rc = flash_write(dev, TEST_OFFSET + sizeof(msg_len), msg, msg_len);
     if (rc != 0) {
-        printk("FLASH TEST: read failed (%d)\n", rc);
-        return -4;
+        shell_error(sh, "Body write failed (%d)", rc);
+        return rc;
     }
+    k_msleep(10);
 
-    printk("FLASH TEST: read back = 0x%08X\n", rx_value);
-
-    if (rx_value != tx_value) {
-        printk("FLASH TEST: mismatch, expected 0x%08X\n", tx_value);
-        return -5;
-    }
-
-    printk("FLASH TEST: PASS\n");
+    shell_print(sh, "Wrote %u bytes OK", msg_len);
     return 0;
 }
+
+static int flash_read_message(const struct shell *sh)
+{
+    const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(is25lp128));
+    static char buf[MAX_MSG_LEN + 1];
+    uint32_t msg_len = 0;
+    int rc;
+
+    rc = flash_read(dev, TEST_OFFSET, &msg_len, sizeof(msg_len));
+    if (rc != 0) {
+        shell_error(sh, "Header read failed (%d)", rc);
+        return rc;
+    }
+
+    if (msg_len == 0xFFFFFFFFu) {
+        shell_warn(sh, "Sector is blank — use flash_write first");
+        return -ENODATA;
+    }
+
+    if (msg_len == 0 || msg_len > MAX_MSG_LEN) {
+        shell_error(sh, "Stored length %u is invalid — sector may be corrupt",
+                    msg_len);
+        return -EBADMSG;
+    }
+
+    rc = flash_read(dev, TEST_OFFSET + sizeof(msg_len), buf, msg_len);
+    if (rc != 0) {
+        shell_error(sh, "Body read failed (%d)", rc);
+        return rc;
+    }
+
+    buf[msg_len] = '\0';
+    shell_print(sh, "\"%s\" (%u bytes)", buf, msg_len);
+    return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shell commands                                                     */
+/* ------------------------------------------------------------------ */
+
+static int cmd_flash_write(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: flash_write <message>");
+        return -EINVAL;
+    }
+
+    static char msg_buf[MAX_MSG_LEN + 1];
+    msg_buf[0] = '\0';
+
+    for (size_t i = 1; i < argc; i++) {
+        if (i > 1) {
+            strncat(msg_buf, " ", sizeof(msg_buf) - strlen(msg_buf) - 1);
+        }
+        strncat(msg_buf, argv[i], sizeof(msg_buf) - strlen(msg_buf) - 1);
+    }
+
+    int rc = flash_write_message(sh, msg_buf);
+    if (rc == 0) {
+        shell_print(sh, "Verifying readback:");
+        flash_read_message(sh);
+    }
+
+    return rc;
+}
+
+static int cmd_flash_read(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    return flash_read_message(sh);
+}
+
+SHELL_CMD_ARG_REGISTER(flash_write, NULL,
+    "Write a message to NOR flash.\nUsage: flash_write <message>",
+    cmd_flash_write, 2, 32);
+
+SHELL_CMD_REGISTER(flash_read, NULL,
+    "Read the message stored in NOR flash.",
+    cmd_flash_read);
+
+/* ------------------------------------------------------------------ */
+/*  main                                                               */
+/* ------------------------------------------------------------------ */
 
 int main(void)
 {
@@ -110,14 +219,12 @@ int main(void)
 
     if (usb_enable(NULL) == 0) {
         k_msleep(1000);
-        printk("\n--- CDH FLASH DEMO START ---\n");
-        printk("USB console live\n");
+        printk("\n--- CDH FLASH SHELL READY ---\n");
+        printk("Commands: flash_write <msg>  |  flash_read\n\n");
     }
 
-    if (cdh_init_nv_memory() == 0) {
-        cdh_flash_test_deadbeef();
-    } else {
-        printk("FLASH DEMO: init failed\n");
+    if (cdh_init_nv_memory() != 0) {
+        printk("ERROR: NVM init failed\n");
     }
 
     while (1) {
