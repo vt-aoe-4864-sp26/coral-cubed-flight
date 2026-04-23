@@ -206,6 +206,15 @@ void radio_thread_entry(void *p1, void *p2, void *p3)
 
                 execute_radio_tx();
                 pending_msg.last_tx_time = k_uptime_get_32();
+
+                uint8_t opcode = pending_msg.payload.data[OPCODE_INDEX];
+                if (opcode == COMMON_ACK_OPCODE ||
+                    opcode == COMMON_NACK_OPCODE ||
+                    opcode == BOOTLOADER_ACK_OPCODE ||
+                    opcode == BOOTLOADER_NACK_OPCODE)
+                {
+                    pending_msg.active = 0;
+                }
             }
             k_mutex_unlock(&pending_msg_mutex);
         }
