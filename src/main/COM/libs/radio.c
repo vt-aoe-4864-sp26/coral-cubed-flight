@@ -212,6 +212,7 @@ void radio_thread_entry(void *p1, void *p2, void *p3)
                 uint8_t opcode = pending_msg.payload.data[OPCODE_INDEX];
                 if (opcode == COMMON_ACK_OPCODE ||
                     opcode == COMMON_NACK_OPCODE ||
+                    opcode == COMMON_DEBUG_OPCODE || // Chat said this was a possible bug, so it suggested we add this
                     opcode == BOOTLOADER_ACK_OPCODE ||
                     opcode == BOOTLOADER_NACK_OPCODE)
                 {
@@ -263,7 +264,7 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3)
                     uint8_t src_id = radio_rx_tab.data[ROUTE_INDEX] & 0x0F;
                     int is_loopback = 0;
 #if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
-                    if (src_id == GND || src_id == COMG)
+                    if (src_id == GND || src_id == COMG) //Chat is not happy with this COMG
                         is_loopback = 1;
 #else
                     if (src_id == COM || src_id == CDH || src_id == PLD)

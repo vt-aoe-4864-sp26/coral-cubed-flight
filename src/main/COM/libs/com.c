@@ -96,7 +96,26 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
         uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
         uint8_t src_id  = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0x0F);
         uint8_t opcode  = rx_cmd_buff_o->data[OPCODE_INDEX];
-        printk("\n[RX] Packet Received! SRC: %d, DST: %d, OPCODE: 0x%02x\n", src_id, dest_id, opcode);
+
+        printk("\n[RX] Packet Received! SRC: %d, DST: %d, OPCODE: 0x%02x\n",
+               src_id, dest_id, opcode);
+
+        printk("[RX] Raw packet bytes: ");
+        for (size_t i = 0; i < rx_cmd_buff_o->end_index; i++)
+        {
+            printk("%02X ", rx_cmd_buff_o->data[i]);
+        }
+        printk("\n");
+
+        if (opcode == COMMON_DEBUG_OPCODE)
+        {
+            printk("[RX] Debug payload: ");
+            for (size_t i = PLD_START_INDEX; i < rx_cmd_buff_o->end_index; i++)
+            {
+                printk("%02X ", rx_cmd_buff_o->data[i]);
+            }
+            printk("\n");
+        }
 
         if (dest_id == COM)
         {
@@ -108,9 +127,11 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
             {
                 tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
             }
+
             tx_cmd_buff_o->start_index = 0;
             tx_cmd_buff_o->end_index = rx_cmd_buff_o->end_index;
             tx_cmd_buff_o->empty = 0;
+
             clear_rx_cmd_buff(rx_cmd_buff_o);
         }
     }

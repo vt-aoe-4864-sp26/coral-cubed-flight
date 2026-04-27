@@ -9,5 +9,6 @@ target_sources(app PRIVATE
     libs/uart.c
     libs/radio.c
     libs/tab.c
+    libs/radio_test.c
 )
 target_include_directories(app PRIVATE libs)
