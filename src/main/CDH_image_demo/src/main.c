@@ -126,7 +126,7 @@ static void uart_send(const uint8_t *buf, size_t len)
 /*  CRC-16/CCITT                                                       */
 /* ------------------------------------------------------------------ */
 
-static uint16_t crc16_ccitt(const uint8_t *buf, size_t len)
+static uint16_t tab_crc16(const uint8_t *buf, size_t len)
 {
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; i++) {
@@ -205,7 +205,7 @@ static int tab_receive(uint8_t *out, size_t out_max, uint32_t timeout_ms)
     /* Verify CRC */
     uint16_t rx_crc  = (uint16_t)out[total - 2] |
                        ((uint16_t)out[total - 1] << 8);
-    uint16_t calc_crc = crc16_ccitt(out + 2, total - 4);
+    uint16_t calc_crc = tab_crc16(out + 2, total - 4);
     if (rx_crc != calc_crc) {
         printk("TAB RX: CRC fail rx=0x%04X calc=0x%04X\n",
                rx_crc, calc_crc);
@@ -234,7 +234,7 @@ static void tab_send_ack(uint16_t chunk_index, uint8_t status)
     msg[10] = (uint8_t)(chunk_index);
     msg[11] = (uint8_t)(chunk_index >> 8);
     msg[12] = status;
-    uint16_t crc = crc16_ccitt(msg + 2, 11);
+    uint16_t crc = tab_crc16(msg + 2, 11);
     msg[13] = (uint8_t)(crc);
     msg[14] = (uint8_t)(crc >> 8);
     uart_send(msg, 15);
@@ -382,7 +382,7 @@ static int process_tab(const uint8_t *buf, size_t len)
             memcpy(out + 10, chunk_hdr, 6);
             memcpy(out + 16, chunk_buf, to_read);
             size_t total = 3u + inner_len + 2u;
-            uint16_t crc = crc16_ccitt(out + 2, total - 4);
+            uint16_t crc = tab_crc16(out + 2, total - 4);
             out[total - 2] = (uint8_t)(crc);
             out[total - 1] = (uint8_t)(crc >> 8);
             uart_send(out, total);
@@ -403,7 +403,7 @@ static int process_tab(const uint8_t *buf, size_t len)
         end_msg[10] = hdr.format;
         end_msg[11] = (uint8_t)(hdr.stored_size);
         end_msg[12] = (uint8_t)(hdr.stored_size >> 8);
-        uint16_t crc = crc16_ccitt(end_msg + 2, 11);
+        uint16_t crc = tab_crc16(end_msg + 2, 11);
         end_msg[12] = (uint8_t)(crc);
         end_msg[13] = (uint8_t)(crc >> 8);
         uart_send(end_msg, 14);
