@@ -169,6 +169,6 @@
     cdc_acm_uart0: cdc_acm_uart0 {
         compatible = "zephyr,cdc-acm-uart";
         current-speed = <115200>;
-        hw-flow-control;
+        
     };
 };

@@ -17,7 +17,7 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/sys/printk.h>
-#include <zephyr/sys/crc.h>
+
 #include <string.h>
 #include <stdbool.h>
 
@@ -144,7 +144,14 @@ static uint16_t tab_crc16(const uint8_t *buf, size_t len)
 
 static uint32_t hdr_crc(const img_hdr_t *h)
 {
-    return crc32_ieee((const uint8_t *)h, offsetof(img_hdr_t, crc32));
+    uint32_t c = 0xFFFFFFFF;
+    const uint8_t *p = (const uint8_t *)h;
+    for (size_t i = 0; i < offsetof(img_hdr_t, crc32); i++) {
+        c ^= p[i];
+        for (int b = 0; b < 8; b++)
+            c = (c & 1) ? (c >> 1) ^ 0xEDB88320 : c >> 1;
+    }
+    return c ^ 0xFFFFFFFF;
 }
 
 static int read_hdr(img_hdr_t *hdr)
