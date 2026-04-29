@@ -1,0 +1,174 @@
+/dts-v1/;
+
+#include <st/l4/stm32l496Xg.dtsi>
+/* Using your original package's pinctrl header to ensure pin availability */
+#include <st/l4/stm32l496a(e-g)ix-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+    model = "Coral CDH STM32";
+    compatible = "coral,stm32";
+
+    chosen {
+        /* Routing the console and shell over the USB-C Virtual COM Port */
+        zephyr,console = &cdc_acm_uart0;
+        zephyr,shell-uart = &cdc_acm_uart0;
+        zephyr,uart-mcumgr = &cdc_acm_uart0;
+        zephyr,sram = &sram0;
+        zephyr,flash = &flash0;
+    };
+
+    aliases {
+        led0 = &led_1;
+        led1 = &led_2;
+        com-en = &com_en;
+        pay-en = &pay_en;
+        
+        /* Your explicit UART mapping */
+        uart-0 = &cdc_acm_uart0;
+        uart-1 = &usart1;
+        uart-2 = &usart2;
+        uart-3 = &usart3;
+        watchdog0 = &iwdg;
+    };
+
+    /* Merged your LEDs and EN lines */
+    leds {
+        compatible = "gpio-leds";
+        led_1: led_1 {
+            gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+            label = "LED 1";
+        };
+        led_2: led_2 {
+            gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
+            label = "LED 2";
+        };
+        com_en: com_en {
+            gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
+            label = "COM EN";
+        };
+        pay_en: pay_en {
+            gpios = <&gpioc 7 GPIO_ACTIVE_HIGH>;
+            label = "PAY EN";
+        };
+    };
+};
+
+/* --- CLOCK TREE --- */
+&clk_hse {
+    clock-frequency = <DT_FREQ_M(16)>;
+    status = "okay";
+};
+
+&clk_lse {
+    clock-frequency = <32768>;
+    status = "okay";
+};
+
+&clk_hsi { status = "okay"; };
+&clk_lsi { status = "okay"; };
+&clk_hsi48 { status = "okay"; };
+
+&pll {
+    div-m = <2>;
+    mul-n = <20>;
+    div-p = <7>;
+    div-q = <2>;
+    div-r = <2>;
+    clocks = <&clk_hse>;
+    status = "okay";
+};
+
+// &pllsai1 {
+//     div-m = <2>;
+//     mul-n = <24>;
+//     div-q = <4>;
+//     clocks = <&clk_hse>;
+//     status = "okay";
+// };
+
+&rcc {
+    clocks = <&pll>;
+    clock-frequency = <DT_FREQ_M(80)>;
+    ahb-prescaler = <1>;
+    apb1-prescaler = <1>;
+    apb2-prescaler = <1>;
+};
+
+/* --- PERIPHERALS --- */
+&usart1 {
+    pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};
+
+&usart2 {
+    pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};
+
+&usart3 {
+    pinctrl-0 = <&usart3_tx_pc4 &usart3_rx_pc5>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};
+&i2c2 {
+    pinctrl-0 = <&i2c2_scl_pb13 &i2c2_sda_pb14>;
+    pinctrl-names = "default";
+    clock-frequency = <I2C_BITRATE_FAST>;
+    status = "okay";
+};
+
+&rtc {
+    clocks = <&rcc STM32_CLOCK(APB1, 28)>,
+             <&rcc STM32_SRC_LSE RTC_SEL(1)>;
+    status = "okay";
+};
+
+&adc1 {
+    pinctrl-0 = <&adc1_in9_pa4>;
+    pinctrl-names = "default";
+    st,adc-clock-source = "SYNC";
+    st,adc-prescaler = <4>;
+    status = "okay";
+};
+
+&quadspi {
+    pinctrl-0 = <&quadspi_clk_pe10 &quadspi_bk1_ncs_pe11
+                 &quadspi_bk1_io0_pe12 &quadspi_bk1_io1_pe13
+                 &quadspi_bk1_io2_pe14 &quadspi_bk1_io3_pe15>;
+    pinctrl-names = "default";
+    flash-id = <1>;
+    status = "okay";
+
+    is25lp128: qspi-nor-flash@0 {
+        compatible = "st,stm32-qspi-nor";
+        reg = <0>;
+        size = <DT_SIZE_M(128)>;
+        qspi-max-frequency = <40000000>;
+        spi-bus-width = <4>;
+        jedec-id = [9d 60 18];
+        quad-enable-requirements = "S1B6";
+        writeoc = "PP_1_1_4";
+        status = "okay";
+    };
+};
+
+/* --- USB VIRTUAL COM PORT --- */
+&usbotg_fs {
+    clocks = <&rcc STM32_CLOCK(AHB2, 12)>,
+            <&rcc STM32_SRC_HSI48 CLK48_SEL(0)>;
+    pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+    pinctrl-names = "default";
+    status = "okay";
+
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
+        current-speed = <115200>;
+        hw-flow-control;
+    };
+};
