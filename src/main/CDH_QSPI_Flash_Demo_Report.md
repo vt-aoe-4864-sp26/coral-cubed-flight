@@ -603,3 +603,5 @@ pio run
 ## Overall state
 
 The demo infrastructure is working, the board is alive, and the flash is responding. The remaining problem is a **software-side JEDEC check issue**, not a broken board or failed build system.
+
+
