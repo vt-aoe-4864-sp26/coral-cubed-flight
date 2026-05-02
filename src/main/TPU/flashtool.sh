@@ -7,16 +7,36 @@ set -e
 DO_BUILD=true
 DO_FLASH=true
 DO_DATA=true
+CORAL_TARGET=""
 
 # Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        -nb|--no-build) DO_BUILD=false; shift ;;
-        -nf|--no-flash) DO_FLASH=false; shift ;;
-        -nd|--no-data)  DO_DATA=false; shift ;;
+        --dev)          CORAL_TARGET="dev";  shift ;;
+        --pico)         CORAL_TARGET="pico"; shift ;;
+        -nb|--no-build) DO_BUILD=false;      shift ;;
+        -nf|--no-flash) DO_FLASH=false;      shift ;;
+        -nd|--no-data)  DO_DATA=false;       shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
 done
+
+# ---- Validate mandatory target flag ----
+if [ -z "$CORAL_TARGET" ]; then
+    echo "ERROR: You must specify a target board."
+    echo "  --dev   Build for Coral Dev Board Micro  (third-party/coralmicro)"
+    echo "  --pico  Build for Coral Pico Board       (third-party/coralpico)"
+    exit 1
+fi
+
+echo "=== Target: $CORAL_TARGET ==="
+
+# Resolve the third-party SDK path (relative to this script)
+if [ "$CORAL_TARGET" = "dev" ]; then
+    SDK_DIR="../../../third-party/coralmicro"
+else
+    SDK_DIR="../../../third-party/coralpico"
+fi
 
 if [ "$DO_BUILD" = true ]; then
     echo "=== Calculating Build Jobs ==="
@@ -25,7 +45,7 @@ if [ "$DO_BUILD" = true ]; then
     echo "Running Make with -j$JOBS"
 
     echo "=== Configuring CMake ==="
-    cmake -B out -S . || { echo "ERROR: CMake configuration failed."; exit 1; }
+    cmake -B out -S . -DCORAL_TARGET="$CORAL_TARGET" || { echo "ERROR: CMake configuration failed."; exit 1; }
 
     echo "=== Building Project ==="
     make -C out -j"$JOBS" || { echo "ERROR: Make build failed."; exit 1; }
@@ -53,8 +73,8 @@ if [ "$DO_FLASH" = true ]; then
         FLASHTOOL_ARGS="$FLASHTOOL_ARGS --nodata"
     fi
 
-    # Update this path to wherever your flashtool.py lives
-    python3 ../../../third-party/coralmicro/scripts/flashtool.py $FLASHTOOL_ARGS || { echo "ERROR: Flashing failed."; exit 1; }
+    # Use the flashtool.py from the selected SDK
+    python3 "$SDK_DIR/scripts/flashtool.py" $FLASHTOOL_ARGS || { echo "ERROR: Flashing failed."; exit 1; }
 else
     echo "=== Skipping Flash (No-Flash Flag Detected) ==="
 fi

@@ -115,4 +115,18 @@ else
     exit 1
 fi
 
+echo -e "${GREEN}--- Building Coralpico ---${NC}"
+if [ -d "third-party/coralpico" ]; then
+    pushd third-party/coralpico > /dev/null
+
+    maybe_dos2unix setup.sh build.sh
+    bash setup.sh
+    bash build.sh
+
+    popd > /dev/null
+else
+    echo -e "${RED}Error: third-party/coralpico not found. Check git submodules.${NC}"
+    exit 1
+fi
+
 echo -e "${BLUE}--- Setup Complete, Welcome to Coral Cubed ---${NC}"
