@@ -10,11 +10,12 @@ build/
 src/main/TPU/out
 src/third-party
 
-#zephyr
+#zephyr builds
 build_cdh
 build_com
 build_gnd
-build_pay
+build_cdh_examples
+build_com_examples
 
 # Python Scripting
 

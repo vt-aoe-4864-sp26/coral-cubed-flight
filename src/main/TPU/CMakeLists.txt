@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 # Define the path to coralmicro so we don't have to type ../../../ repeatedly
-set(CORAL_MICRO_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../third-party/coralmicro")
+set(CORAL_MICRO_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../third-party/coralpico")
 
 # Toolchain must be set before project() call.
 if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)

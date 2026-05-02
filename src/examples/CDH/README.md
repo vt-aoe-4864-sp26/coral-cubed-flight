@@ -1,22 +1,84 @@
-# Command and Data Handling (CDH)
+# CDH Examples
 
-**Path:** `src/main/CDH/`
-**Primary File:** `cdh_main.c`
+**Path:** `src/examples/CDH/`
 
-## Primary Functionality
-The CDH module runs on the Custom STM32 Board (`coral_stm32`) using the Zephyr RTOS. It acts as the central orchestrator for the flight stack, handling the power sequencing for the COM module to prevent USB brownouts and initializing hardware peripherals like UARTs and LEDs. 
+## Directory Structure
 
-In its continuous operation, it expects a handshake from the COM module, runs command/packet routing, and processes command queues (`rx_cmd_queue` and `tx_cmd_buff_t`), communicating over hardware UART.
-
-## Flashing & Building
-We use `flashtool.sh` to wrap `west build` and `st-flash` for the STM32 processing unit.
-
-### Flashtool Usage
-Run the flashtool from this directory:
-```bash
-./flashtool.sh [FLAGS]
+```
+src/examples/CDH/
+├── apps/                  ← Example applications (one is built at a time)
+│   ├── blink/
+│   │   ├── blink.c        ← Alternates LED1 and LED2
+│   │   └── CMakeLists.txt
+│   ├── gpio/
+│   │   ├── gpio.c         ← Enables COM and PAY power rails
+│   │   └── CMakeLists.txt
+│   └── uart/
+│       ├── uart.c         ← Responds to TAB packets via USB-C console
+│       └── CMakeLists.txt
+├── libs/                  ← Shared board support library (cdh.c, cdh.h, tab.c, tab.h)
+├── boards/                ← Custom board definitions (coral_stm32)
+├── tools/                 ← Tooling and config files
+├── prj.conf               ← Shared Zephyr Kconfig (all apps use this)
+├── flashtool.sh           ← Build & flash script with app selection
+└── README.md              ← This file
 ```
 
-### Flags
-- `--no-build` or `-nb` : Skip the Zephyr build step.
-- `--no-flash` or `-nf` : Skip the st-flash flashing step.
+## Example Applications
+
+### Blink (`--blink`, default)
+Toggles LED1 and LED2 in an alternating pattern at 500ms intervals. No peripherals initialized beyond LEDs. Good for verifying the board boots and GPIOs work.
+
+### GPIO (`--gpio`)
+Initializes the CDH GPIO subsystem and enables the COM and PAY power rails using `power_on_com()` and `power_on_pay()`. Outputs status via USB console (`printk`). LEDs blink as a heartbeat.
+
+### UART (`--uart`)
+Full USB-C console example. Boots the USB CDC device, enables interrupt-driven UART RX, and processes incoming TAB-protocol packets through a dedicated command processor thread. Responds to commands and prints diagnostics to the console. Also initializes the hardware UARTs for board-to-board communication.
+
+## Building & Flashing
+
+Use `flashtool.sh` to build and flash examples to the CDH board (STM32 via `st-flash`).
+
+### Usage
+```bash
+./flashtool.sh [APP_FLAG] [OPTIONS]
+```
+
+### App Flags (choose one)
+| Flag       | Description                         |
+|------------|-------------------------------------|
+| `--blink`  | Build the blink example (default)   |
+| `--gpio`   | Build the GPIO example              |
+| `--uart`   | Build the UART example              |
+
+> **Note:** If no app flag is specified, `--blink` is used by default. Specifying more than one app flag will produce an error.
+
+### Options
+| Flag              | Short | Description                      |
+|-------------------|-------|----------------------------------|
+| `--no-build`      | `-nb` | Skip the west build step         |
+| `--no-flash`      | `-nf` | Skip the st-flash flashing step  |
+
+### Examples
+```bash
+# Build and flash the default blink example
+./flashtool.sh
+
+# Build the GPIO example without flashing (build validation only)
+./flashtool.sh --gpio -nf
+
+# Build and flash the UART example
+./flashtool.sh --uart
+
+# Flash a previously built example (skip rebuild)
+./flashtool.sh --blink -nb
+```
+
+## How It Works
+
+Each app under `apps/` has its own `CMakeLists.txt` that:
+1. Declares the app source file (e.g., `blink.c`)
+2. Links the shared `libs/` sources (`cdh.c`, `tab.c`) via relative paths
+3. Adds the `libs/` directory to the include path
+
+The shared `prj.conf` and `boards/` overlay at the top level are automatically picked up by Zephyr's build system for all apps.
