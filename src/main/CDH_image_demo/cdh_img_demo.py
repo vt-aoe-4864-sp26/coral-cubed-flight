@@ -53,9 +53,15 @@ def crc16(data: bytes) -> int:
 # ── Build TAB message ─────────────────────────────────────────────────
 def build_tab(cmd: int, data: bytes) -> bytes:
     global seq
-    inner = struct.pack("<BHHH", len(data) + 6, DST_CDH, SRC_PC, seq & 0xFFFF)
+
+    # dst(2) + src(2) + seq(2) + cmd(1) + data
+    inner_len = 7 + len(data)
+
+    inner = struct.pack("<BHHH", inner_len, DST_CDH, SRC_PC, seq & 0xFFFF)
     inner += bytes([cmd]) + data
+
     seq += 1
+
     crc = crc16(inner)
     return SYNC + inner + struct.pack("<H", crc)
 
