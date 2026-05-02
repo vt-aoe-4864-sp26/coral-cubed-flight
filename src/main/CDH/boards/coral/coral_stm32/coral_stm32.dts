@@ -23,7 +23,7 @@
         led1 = &led_2;
         com-en = &com_en;
         pay-en = &pay_en;
-        
+
         /* Your explicit UART mapping */
         uart-0 = &cdc_acm_uart0;
         uart-1 = &usart1;
@@ -65,9 +65,9 @@
     status = "okay";
 };
 
-&clk_hsi { status = "okay"; };
-&clk_lsi { status = "okay"; };
-&clk_hsi48 { status = "okay"; };
+&clk_hsi {status = "okay"; };
+&clk_lsi {status = "okay"; };
+&clk_hsi48 {status = "okay"; };
 
 &pll {
     div-m = <2>;
@@ -80,11 +80,11 @@
 };
 
 // &pllsai1 {
-//     div-m = <2>;
-//     mul-n = <24>;
-//     div-q = <4>;
-//     clocks = <&clk_hse>;
-//     status = "okay";
+    //     div-m = <2>;
+    //     mul-n = <24>;
+    //     div-q = <4>;
+    //     clocks = <&clk_hse>;
+    //     status = "okay";
 // };
 
 &rcc {
@@ -139,8 +139,8 @@
 
 &quadspi {
     pinctrl-0 = <&quadspi_clk_pe10 &quadspi_bk1_ncs_pe11
-                 &quadspi_bk1_io0_pe12 &quadspi_bk1_io1_pe13
-                 &quadspi_bk1_io2_pe14 &quadspi_bk1_io3_pe15>;
+    &quadspi_bk1_io0_pe12 &quadspi_bk1_io1_pe13
+    &quadspi_bk1_io2_pe14 &quadspi_bk1_io3_pe15>;
     pinctrl-names = "default";
     flash-id = <1>;
     status = "okay";
@@ -159,7 +159,7 @@
 /* --- USB VIRTUAL COM PORT --- */
 &usbotg_fs {
     clocks = <&rcc STM32_CLOCK(AHB2, 12)>,
-            <&rcc STM32_SRC_HSI48 CLK48_SEL(0)>;
+             <&rcc STM32_SRC_HSI48 CLK48_SEL(0)>;
     pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
     pinctrl-names = "default";
     status = "okay";
