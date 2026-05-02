@@ -48,15 +48,15 @@ echo "Virtual environment activated."
 echo -e "${GREEN}--- Updating Submodules ---${NC}"
 git submodule update --init --recursive
 
-echo -e "${GREEN}--- Fetching ARM Toolchain ---${NC}"
-mkdir -p make
-pushd make > /dev/null
-if [ ! -d "arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi" ]; then
-    wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-    tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-    rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-else
-    echo "Toolchain already in place, skipping wget."
+# echo -e "${GREEN}--- Fetching ARM Toolchain ---${NC}"
+# mkdir -p make
+# pushd make > /dev/null
+# if [ ! -d "arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi" ]; then
+#     wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+#     tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+#     rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+# else
+#     echo "Toolchain already in place, skipping wget."
 fi
 popd > /dev/null
 

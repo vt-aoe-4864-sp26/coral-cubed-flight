@@ -298,8 +298,8 @@ if __name__ == '__main__':
         # time.sleep(10.0) # time for the iee stack to boot
         # print("--- Blinking COM ---")
         # test leds - com
-        # flatsat.com_blink_demo()
-        # print("blinked com")
+        flatsat.com_blink_demo()
+        print("blinked com")
 
         # time.sleep(10.0) 
         
