@@ -112,6 +112,52 @@ void cmd_processor_entry(void)
     }
 }
 
+static void load_demo_commands(void) {
+    if (nvs_queue_get_count() > 0) return;
+
+    printk("[DEMO] NVS Queue Empty. Pre-loading Lab Demo Commands...\n");
+
+    rx_cmd_buff_t infer_cmd = {.size = CMD_MAX_LEN};
+    clear_rx_cmd_buff(&infer_cmd);
+    infer_cmd.state = RX_CMD_BUFF_STATE_COMPLETE;
+    infer_cmd.data[START_BYTE_0_INDEX] = START_BYTE_0;
+    infer_cmd.data[START_BYTE_1_INDEX] = START_BYTE_1;
+    infer_cmd.data[MSG_LEN_INDEX] = 9;
+    infer_cmd.data[HWID_LSB_INDEX] = SAT_HWID_LSB;
+    infer_cmd.data[HWID_MSB_INDEX] = SAT_HWID_MSB;
+    infer_cmd.data[MSG_ID_LSB_INDEX] = 0x01;
+    infer_cmd.data[MSG_ID_MSB_INDEX] = 0x00;
+    infer_cmd.bus_msg_id = 1;
+    infer_cmd.data[ROUTE_INDEX] = (PLD << 4) | GND; 
+    infer_cmd.data[OPCODE_INDEX] = COMMON_DATA_OPCODE;
+    infer_cmd.data[PLD_START_INDEX] = VAR_CODE_CORAL_INFER_DENBY;
+    infer_cmd.data[PLD_START_INDEX+1] = 1;
+    infer_cmd.data[PLD_START_INDEX+2] = VAR_ENABLE;
+    infer_cmd.end_index = 12;
+    nvs_queue_push(&infer_cmd);
+
+    rx_cmd_buff_t downlink_cmd = {.size = CMD_MAX_LEN};
+    clear_rx_cmd_buff(&downlink_cmd);
+    downlink_cmd.state = RX_CMD_BUFF_STATE_COMPLETE;
+    downlink_cmd.data[START_BYTE_0_INDEX] = START_BYTE_0;
+    downlink_cmd.data[START_BYTE_1_INDEX] = START_BYTE_1;
+    downlink_cmd.data[MSG_LEN_INDEX] = 9;
+    downlink_cmd.data[HWID_LSB_INDEX] = SAT_HWID_LSB;
+    downlink_cmd.data[HWID_MSB_INDEX] = SAT_HWID_MSB;
+    downlink_cmd.data[MSG_ID_LSB_INDEX] = 0x02;
+    downlink_cmd.data[MSG_ID_MSB_INDEX] = 0x00;
+    downlink_cmd.bus_msg_id = 2;
+    downlink_cmd.data[ROUTE_INDEX] = (GND << 4) | CDH; // From CDH to GND
+    downlink_cmd.data[OPCODE_INDEX] = COMMON_DATA_OPCODE;
+    downlink_cmd.data[PLD_START_INDEX] = VAR_CODE_INFERENCE_RESULT;
+    downlink_cmd.data[PLD_START_INDEX+1] = 1;
+    downlink_cmd.data[PLD_START_INDEX+2] = 0x42; // Example result: 0x42
+    downlink_cmd.end_index = 12;
+    nvs_queue_push(&downlink_cmd);
+
+    printk("[DEMO] Lab Demo Commands Loaded: %d items in queue.\n", nvs_queue_get_count());
+}
+
 K_THREAD_DEFINE(cmd_processor_tid, 2048, cmd_processor_entry, NULL, NULL, NULL, 5, 0, 0);
 
 int main(void)
@@ -119,6 +165,7 @@ int main(void)
     init_leds();
     init_gpio();
     tab_nvs_init();
+    load_demo_commands();
 
     // Power on COM immediately. The inrush current will may cause a brownout,
     // but since USB isn't started yet, it won't crash the terminal
