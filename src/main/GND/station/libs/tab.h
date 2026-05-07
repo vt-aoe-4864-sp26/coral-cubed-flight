@@ -37,6 +37,10 @@
 #define BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE ((uint8_t)0x20)
 #define BOOTLOADER_JUMP_OPCODE              ((uint8_t)0x0b)
 
+// New Opcodes
+#define COMMON_RESET_MSG_ID_OPCODE          ((uint8_t)0x1A)
+#define COMMON_CLEAR_QUEUE_OPCODE           ((uint8_t)0x1B)
+
 // BOOTLOADER_ACK reasons
 #define BOOTLOADER_ACK_REASON_PONG   ((uint8_t)0x00)
 #define BOOTLOADER_ACK_REASON_ERASED ((uint8_t)0x01)
@@ -94,7 +98,7 @@ typedef struct rx_cmd_buff {
   size_t              end_index;         
   const size_t        size;              
   uint8_t             route_id;          
-  uint8_t             bus_msg_id;        
+  uint16_t            bus_msg_id;        
   uint8_t             data[CMD_MAX_LEN]; 
 } rx_cmd_buff_t;
 

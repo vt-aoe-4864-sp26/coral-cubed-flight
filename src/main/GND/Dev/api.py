@@ -113,6 +113,30 @@ def payload_run_demo():
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/payload/reset_ids")
+def payload_reset_ids():
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.reset_message_ids()
+            return {"status": "Message IDs reset to 0"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/clear_queue")
+def payload_clear_queue():
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.clear_cdh_queue()
+            return {"status": "CDH Command Queue cleared"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/radio/{action}")
 def radio_enable(action: str, req: BooleanRequest):
     if not flatsat:

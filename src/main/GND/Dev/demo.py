@@ -162,6 +162,18 @@ class PCB:
         else:
             print("uart handshake failed. please check the connection to the comG board.\n")
             sys.exit(1)
+            
+    def reset_message_ids(self, dst=COM):
+        # We send a COMMON_ACK with msg_id 0xFFFF to trigger the reset cascade
+        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, 0xFFFF, GND, dst)
+        # We don't wait for ACK because resetting will break the flow, just blast it.
+        packet_len = cmd.get_byte_count()
+        self.serial_port.write(bytes(cmd.data[:packet_len]))
+        self.msgid = 0
+        
+    def clear_cdh_queue(self):
+        cmd = TxCmd(COMMON_CLEAR_QUEUE_OPCODE, self.HWID, self.msgid, GND, CDH)
+        self._send_and_wait(cmd)
         
 
     # ==== Updated to route directly to CDH ==== #

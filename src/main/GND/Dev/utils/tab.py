@@ -31,6 +31,9 @@ BOOTLOADER_WRITE_PAGE_OPCODE        = 0x02
 BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE = 0x20
 BOOTLOADER_JUMP_OPCODE              = 0x0b
 
+COMMON_RESET_MSG_ID_OPCODE          = 0x1A
+COMMON_CLEAR_QUEUE_OPCODE           = 0x1B
+
 ## Route Nibble IDs
 GND    = 0x00
 COM    = 0x01
@@ -226,11 +229,16 @@ class TxCmdBuff:
       elif rx_cmd_buff.data[OPCODE_INDEX] == BOOTLOADER_WRITE_PAGE_OPCODE:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
-      elif rx_cmd_buff.data[OPCODE_INDEX] == \
-      BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE:
+      elif rx_cmd_buff.data[OPCODE_INDEX] == BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
       elif rx_cmd_buff.data[OPCODE_INDEX] == BOOTLOADER_JUMP_OPCODE:
+        self.data[MSG_LEN_INDEX] = 0x06
+        self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
+      elif rx_cmd_buff.data[OPCODE_INDEX] == COMMON_RESET_MSG_ID_OPCODE:
+        self.data[MSG_LEN_INDEX] = 0x06
+        self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
+      elif rx_cmd_buff.data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE:
         self.data[MSG_LEN_INDEX] = 0x06
         self.data[OPCODE_INDEX] = COMMON_NACK_OPCODE
         
@@ -284,6 +292,10 @@ def cmd_bytes_to_str(data):
     cmd_str += 'common_ack'
   elif data[OPCODE_INDEX] == COMMON_NACK_OPCODE:
     cmd_str += 'common_nack'
+  elif data[OPCODE_INDEX] == COMMON_RESET_MSG_ID_OPCODE:
+    cmd_str += 'common_reset_msg_id'
+  elif data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE:
+    cmd_str += 'common_clear_queue'
   elif data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE:
     cmd_str += 'common_debug'
     pld_str = ' "'
@@ -360,6 +372,10 @@ class TxCmd:
     if self.data[OPCODE_INDEX] == COMMON_ACK_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06
     elif self.data[OPCODE_INDEX] == COMMON_NACK_OPCODE:
+      self.data[MSG_LEN_INDEX] = 0x06
+    elif self.data[OPCODE_INDEX] == COMMON_RESET_MSG_ID_OPCODE:
+      self.data[MSG_LEN_INDEX] = 0x06
+    elif self.data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06
     elif self.data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06
