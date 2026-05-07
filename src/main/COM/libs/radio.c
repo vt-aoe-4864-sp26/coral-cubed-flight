@@ -26,7 +26,7 @@ extern const struct gpio_dt_spec led2;
 #define RADIO_QUEUE_SIZE 10
 
 // nRF52833 Supported TX Power levels (escalation path)
-static const int8_t tx_power_escalation[] = {-12, -4, 0, 4, 8};
+static const int8_t tx_power_escalation[] = {8,8,8,8};
 #define NUM_POWER_LEVELS (sizeof(tx_power_escalation) / sizeof(int8_t))
 
 // ========== Network Addressing ========== //
