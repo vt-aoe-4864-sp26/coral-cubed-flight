@@ -29,6 +29,7 @@ static void generic_uart_callback(const struct device *dev, void *user_data) {
         while (uart_fifo_read(dev, &c, 1) == 1) {
             push_rx_cmd_buff(&ctx->rx_buff, c);
             if (ctx->rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE) {
+                tab_print_msg(ctx->rx_buff.data, ctx->rx_buff.end_index, "RX", "UART");
                 k_msgq_put(&rx_cmd_queue, &ctx->rx_buff, K_NO_WAIT);
                 clear_rx_cmd_buff(&ctx->rx_buff); 
             }

@@ -77,6 +77,7 @@ static void generic_uart_callback(const struct device *dev, void *user_data)
       push_rx_cmd_buff(&ctx->rx_buff, c);
       if (ctx->rx_buff.state == RX_CMD_BUFF_STATE_COMPLETE)
       {
+        tab_print_msg(ctx->rx_buff.data, ctx->rx_buff.end_index, "RX", "UART");
         k_msgq_put(&rx_cmd_queue, &ctx->rx_buff, K_NO_WAIT);
         clear_rx_cmd_buff(&ctx->rx_buff);
       }
@@ -202,6 +203,7 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
 
   if (target_dev != NULL && device_is_ready(target_dev))
   {
+    tab_print_msg(tx_cmd_buff_o->data, tx_cmd_buff_o->end_index, "TX", "UART");
     uart_irq_rx_disable(target_dev);
     while (!(tx_cmd_buff_o->empty))
     {

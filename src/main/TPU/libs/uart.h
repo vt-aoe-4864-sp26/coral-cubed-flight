@@ -10,6 +10,8 @@ extern "C"
 }
 
 extern volatile uint8_t g_run_inference;
+extern volatile uint16_t g_last_inference_msg_id;
+extern volatile uint16_t g_fetch_inference_msg_id;
 
 
 void StartUartTask();

@@ -11,6 +11,8 @@
 static rx_cmd_buff_t rx_buff = {.state = RX_CMD_BUFF_STATE_START_BYTE_0, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .route_id = 0, .bus_msg_id = 0, .data = {0}};
 static tx_cmd_buff_t tx_buff = {.empty = 1, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .data = {0}};
 volatile uint8_t g_run_inference = 0;
+volatile uint16_t g_last_inference_msg_id = 0;
+volatile uint16_t g_fetch_inference_msg_id = 0;
 
 // --- Required TAB Protocol Implementations ---
 
@@ -49,11 +51,17 @@ extern "C"
             return 1;
         case VAR_CODE_CORAL_INFER_DENBY:
         case VAR_CODE_RUN_DEMO:
-            // printf("TAB Command Received: Triggering Demo Inference...\r\n");
             g_run_inference = 1;
+            g_last_inference_msg_id = rx_cmd_buff->bus_msg_id;
             return 1;
         case VAR_CODE_CORAL_INFER_BLK:
             g_run_inference = 2;
+            g_last_inference_msg_id = rx_cmd_buff->bus_msg_id;
+            return 1;
+        case VAR_CODE_FETCH_RESULT:
+            if (var_len >= 2) {
+                g_fetch_inference_msg_id = ((uint16_t)val_ptr[0] << 8) | val_ptr[1];
+            }
             return 1;
         default:
             return 0; // Unknown command, tab.c will NACK

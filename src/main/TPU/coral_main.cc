@@ -13,7 +13,9 @@
 #include "libs/base/console_m7.h"
 #include "libs/base/led.h"
 #include "libs/base/tasks.h"
+#include "libs/base/filesystem.h"
 #include "libs/tensorflow/utils.h"
+#include <vector>
 
 // local apps
 #include "libs/uart.h"
@@ -61,18 +63,47 @@ extern "C" [[noreturn]] void app_main(void *param)
           auto results = runner.GetDetectionResults();
 
           // printf("Inference OK! Found %d face(s).\r\n", results.size());
-          // Loop through and print the results using basic C-types (no std::string!)
+          const char* res_str = "";
+          size_t res_len = 0;
+
           if (results.size() > 0)
           {
-            if (infer_type == 2) SendInferenceResult((uint8_t *)"DENBY??!", 8);
-            else SendInferenceResult((uint8_t *)"DENBY!", 6);
+            if (infer_type == 2) { res_str = "DENBY??!"; res_len = 8; }
+            else { res_str = "DENBY!"; res_len = 6; }
           }
           else
           {
-            if (infer_type == 2) SendInferenceResult((uint8_t *)"NO_DENBY!", 9);
-            else SendInferenceResult((uint8_t *)"NO_DENBY?!", 10);
+            if (infer_type == 2) { res_str = "NO_DENBY!"; res_len = 9; }
+            else { res_str = "NO_DENBY?!"; res_len = 10; }
           }
+          
+          char filepath[64];
+          snprintf(filepath, sizeof(filepath), "/inference_%d.txt", g_last_inference_msg_id);
+          coralmicro::LfsWriteFile(filepath, (const uint8_t*)res_str, res_len);
         }
+      }
+    }
+
+    if (g_fetch_inference_msg_id > 0)
+    {
+      uint16_t fetch_id = g_fetch_inference_msg_id;
+      g_fetch_inference_msg_id = 0;
+      
+      char filepath[64];
+      snprintf(filepath, sizeof(filepath), "/inference_%d.txt", fetch_id);
+      
+      std::vector<uint8_t> result_data;
+      if (coralmicro::LfsReadFile(filepath, &result_data))
+      {
+          char out_buf[256];
+          int len = snprintf(out_buf, sizeof(out_buf), "ID %d: %.*s", fetch_id, (int)result_data.size(), result_data.data());
+          SendInferenceResult((uint8_t*)out_buf, len);
+      }
+      else
+      {
+          char out_buf[256];
+          int len = snprintf(out_buf, sizeof(out_buf), "ID %d: NOT_FOUND", fetch_id);
+          SendInferenceResult((uint8_t*)out_buf, len);
       }
     }
 

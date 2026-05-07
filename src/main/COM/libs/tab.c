@@ -85,6 +85,37 @@ static int check_and_clear_pending_id(uint16_t msg_id) {
 }
 
 // ========== Helper functions ========== //
+#include <zephyr/sys/printk.h>
+
+const char* get_route_str(uint8_t route_id) {
+  switch(route_id) {
+    case GND: return "GND";
+    case COM: return "COM";
+    case CDH: return "CDH";
+    case PLD: return "PLD";
+    default: return "UNK";
+  }
+}
+
+void tab_print_msg(uint8_t* data, size_t len, const char* direction, const char* interface) {
+    if (len < PLD_START_INDEX) return;
+    
+    uint8_t dest_id = (data[ROUTE_INDEX] & 0xF0) >> 4;
+    uint8_t src_id  = (data[ROUTE_INDEX] & 0x0F);
+    uint8_t opcode  = data[OPCODE_INDEX];
+    
+    printk("\n[%s - %s] SRC: %s, DST: %s, OPCODE: 0x%02x\n", 
+           direction, interface, get_route_str(src_id), get_route_str(dest_id), opcode);
+           
+    size_t pld_len = data[MSG_LEN_INDEX] - 6;
+    if (pld_len > 0 && len >= PLD_START_INDEX + pld_len) {
+        printk("  Payload (%zu bytes): ", pld_len);
+        for (size_t i = 0; i < pld_len; i++) {
+            printk("%02x ", data[PLD_START_INDEX + i]);
+        }
+        printk("\n");
+    }
+}
 
 // Clears rx_cmd_buff data and resets state and indices
 void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o) {

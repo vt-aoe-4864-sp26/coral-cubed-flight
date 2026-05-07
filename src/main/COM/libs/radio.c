@@ -283,6 +283,8 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3)
                     }
                     // ---------------------------
 
+                    tab_print_msg(radio_rx_tab.data, radio_rx_tab.end_index, "RX", "RADIO");
+
                     k_mutex_lock(&pending_msg_mutex, K_FOREVER);
                     if (pending_msg.active &&
                         radio_rx_tab.data[OPCODE_INDEX] == COMMON_ACK_OPCODE)

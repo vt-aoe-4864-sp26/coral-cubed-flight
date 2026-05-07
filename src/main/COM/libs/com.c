@@ -94,9 +94,6 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
     if (rx_cmd_buff_o->state == RX_CMD_BUFF_STATE_COMPLETE && tx_cmd_buff_o->empty)
     {
         uint8_t dest_id = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
-        uint8_t src_id  = (rx_cmd_buff_o->data[ROUTE_INDEX] & 0x0F);
-        uint8_t opcode  = rx_cmd_buff_o->data[OPCODE_INDEX];
-        printk("\n[RX] Packet Received! SRC: %d, DST: %d, OPCODE: 0x%02x\n", src_id, dest_id, opcode);
 
         if (dest_id == COM)
         {
@@ -122,12 +119,9 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
         return;
 
     uint8_t dest_id = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0xF0) >> 4;
-    uint8_t src_id  = (tx_cmd_buff_o->data[ROUTE_INDEX] & 0x0F);
-    uint8_t opcode  = tx_cmd_buff_o->data[OPCODE_INDEX];
     const struct device *target_uart = NULL;
     int send_to_radio = 0;
 
-    printk("[TX] Routing packet. SRC: %d, DST: %d, OPCODE: 0x%02x (Size: %d)\n", src_id, dest_id, opcode, tx_cmd_buff_o->end_index);
 
 #if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
     // Ground Station Topology
@@ -154,12 +148,14 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     // Execute the routing
     if (send_to_radio)
     {
+        tab_print_msg(tx_cmd_buff_o->data, tx_cmd_buff_o->end_index, "TX", "RADIO");
         radio_send_packet(tx_cmd_buff_o);
         clear_tx_cmd_buff(tx_cmd_buff_o);
         gpio_pin_toggle_dt(&led2);
     }
     else if (target_uart != NULL && device_is_ready(target_uart))
     {
+        tab_print_msg(tx_cmd_buff_o->data, tx_cmd_buff_o->end_index, "TX", "UART");
         uart_irq_rx_disable(target_uart); // Disable the interrupt during transmission
 
         while (!(tx_cmd_buff_o->empty))

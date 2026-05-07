@@ -113,6 +113,7 @@ typedef struct tx_cmd_buff {
 // Helper functions
 void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o);
 void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
+void tab_print_msg(uint8_t* data, size_t len, const char* direction, const char* interface);
 
 // Protocol functions
 void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b);
