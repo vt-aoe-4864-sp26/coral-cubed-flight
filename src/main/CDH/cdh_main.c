@@ -162,16 +162,6 @@ K_THREAD_DEFINE(cmd_processor_tid, 2048, cmd_processor_entry, NULL, NULL, NULL, 
 
 int main(void)
 {
-    init_leds();
-    init_gpio();
-    tab_nvs_init();
-    load_demo_commands();
-
-    // Power on COM immediately. The inrush current will may cause a brownout,
-    // but since USB isn't started yet, it won't crash the terminal
-    power_on_com();
-    power_on_pay();
-    k_msleep(1500); // Wait for voltage rails to fully recover
 
     // NOW boot usb
     if (init_usb_console() == 0)
@@ -180,6 +170,21 @@ int main(void)
         printk("\n--- CDH BOOT SEQUENCE START ---\n");
         printk("Console & USB UART Live\n");
     }
+
+    printk("Initializing Hardware Systems\n");
+    init_leds();
+    init_gpio();
+    tab_nvs_init();
+    printk("Hardware Systems Online\n");
+    
+
+    // Power on COM immediately. The inrush current will may cause a brownout,
+    // but since USB isn't started yet, it won't crash the terminal
+    power_on_com();
+    power_on_pay();
+    k_msleep(1500); // Wait for voltage rails to fully recover
+
+    printk("Com and Payload Online\n");
 
     // Boot Hardware UART
     init_hardware_uarts();
@@ -191,6 +196,9 @@ int main(void)
     gpio_pin_toggle_dt(&led1);
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");
+
+    printk("Loading Demo Commands\n");
+    load_demo_commands();
 
     static tx_cmd_buff_t local_demo_tx = {.size = CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_demo_tx);
