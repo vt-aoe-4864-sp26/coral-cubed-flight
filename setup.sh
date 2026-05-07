@@ -48,15 +48,15 @@ echo "Virtual environment activated."
 echo -e "${GREEN}--- Updating Submodules ---${NC}"
 git submodule update --init --recursive
 
-echo -e "${GREEN}--- Fetching ARM Toolchain ---${NC}"
-mkdir -p make
-pushd make > /dev/null
-if [ ! -d "arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi" ]; then
-    wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-    tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-    rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
-else
-    echo "Toolchain already in place, skipping wget."
+# echo -e "${GREEN}--- Fetching ARM Toolchain ---${NC}"
+# mkdir -p make
+# pushd make > /dev/null
+# if [ ! -d "arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi" ]; then
+#     wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+#     tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+#     rm arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+# else
+#     echo "Toolchain already in place, skipping wget."
 fi
 popd > /dev/null
 
@@ -112,6 +112,20 @@ EOF
     popd > /dev/null
 else
     echo -e "${RED}Error: third-party/coralmicro not found. Check git submodules.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}--- Building Coralpico ---${NC}"
+if [ -d "third-party/coralpico" ]; then
+    pushd third-party/coralpico > /dev/null
+
+    maybe_dos2unix setup.sh build.sh
+    bash setup.sh
+    bash build.sh
+
+    popd > /dev/null
+else
+    echo -e "${RED}Error: third-party/coralpico not found. Check git submodules.${NC}"
     exit 1
 fi
 

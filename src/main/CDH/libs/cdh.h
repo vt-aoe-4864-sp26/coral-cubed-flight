@@ -47,7 +47,8 @@
 // ========== Payload Commands
 #define VAR_CODE_CORAL_WAKE     ((uint8_t)0x08)
 #define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x09)
-#define VAR_CODE_CORAL_INFER    ((uint8_t)0x0a)
+#define VAR_CODE_CORAL_INFER_DENBY ((uint8_t)0x0a)
+#define VAR_CODE_CORAL_INFER_BLK   ((uint8_t)0x0d)
 
 // ========== Testing & Debug
 #define VAR_CODE_RUN_DEMO       ((uint8_t)0x0b)

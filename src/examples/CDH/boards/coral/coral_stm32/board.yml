@@ -1,0 +1,5 @@
+board:
+  name: coral_stm32
+  vendor: coral
+  socs:
+  - name: stm32l496xx

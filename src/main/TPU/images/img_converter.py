@@ -1,12 +1,12 @@
 from PIL import Image
 import numpy as np
 
-# Set these to match what your C++ printf statement told you!
+
 TARGET_WIDTH = 320
 TARGET_HEIGHT = 320
 IS_INT8_MODEL = False # Set to True if tensor type is 9
 
-# Open your source image
+# Open source image
 img = Image.open("denby.png")
 
 # Resize to the EXACT dimensions the tensor expects

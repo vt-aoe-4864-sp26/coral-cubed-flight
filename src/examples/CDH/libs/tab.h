@@ -1,0 +1,124 @@
+// tab.h
+// TAB serial communication protocol header file
+//
+// Written by Bradley Denby
+// Other contributors: Chad Taylor, Jack Rathert
+//
+// See the top-level LICENSE file for the license.
+
+#ifndef TAB_H
+#define TAB_H
+
+// Standard library
+#include <stddef.h> 
+#include <stdint.h> 
+
+// Macros
+
+// General
+#define CMD_MAX_LEN  ((size_t)258) // opcode
+#define PLD_MAX_LEN  ((size_t)249) // payload 
+#define START_BYTE_0 ((const uint8_t)0x22) // static start byte
+#define START_BYTE_1 ((const uint8_t)0x69) // static start byte
+
+#define SAT_HWID_MSB ((uint8_t)0xCC)
+#define SAT_HWID_LSB ((uint8_t)0xC3)
+
+// Opcodes
+#define COMMON_ACK_OPCODE                   ((uint8_t)0x10)
+#define COMMON_NACK_OPCODE                  ((uint8_t)0xff)
+#define COMMON_DEBUG_OPCODE                 ((uint8_t)0x11)
+#define COMMON_DATA_OPCODE                  ((uint8_t)0x16)
+#define BOOTLOADER_ACK_OPCODE               ((uint8_t)0x01)
+#define BOOTLOADER_NACK_OPCODE              ((uint8_t)0x0f)
+#define BOOTLOADER_PING_OPCODE              ((uint8_t)0x00)
+#define BOOTLOADER_ERASE_OPCODE             ((uint8_t)0x0c)
+#define BOOTLOADER_WRITE_PAGE_OPCODE        ((uint8_t)0x02)
+#define BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE ((uint8_t)0x20)
+#define BOOTLOADER_JUMP_OPCODE              ((uint8_t)0x0b)
+
+// BOOTLOADER_ACK reasons
+#define BOOTLOADER_ACK_REASON_PONG   ((uint8_t)0x00)
+#define BOOTLOADER_ACK_REASON_ERASED ((uint8_t)0x01)
+#define BOOTLOADER_ACK_REASON_JUMPED ((uint8_t)0xff)
+
+// Route Nibble IDs
+#define GND ((uint8_t)0x00)
+#define COM ((uint8_t)0x01)
+#define CDH ((uint8_t)0x02)
+#define PLD ((uint8_t)0x03)
+
+// Typedefs
+
+// TAB command indices
+typedef enum cmd_index {
+  START_BYTE_0_INDEX = ((size_t)0),
+  START_BYTE_1_INDEX = ((size_t)1),
+  MSG_LEN_INDEX      = ((size_t)2),
+  HWID_LSB_INDEX     = ((size_t)3),
+  HWID_MSB_INDEX     = ((size_t)4),
+  MSG_ID_LSB_INDEX   = ((size_t)5),
+  MSG_ID_MSB_INDEX   = ((size_t)6),
+  ROUTE_INDEX        = ((size_t)7),
+  OPCODE_INDEX       = ((size_t)8),
+  PLD_START_INDEX    = ((size_t)9)
+} cmd_index_t;
+
+// RX command buffer states
+typedef enum rx_cmd_buff_state {
+  RX_CMD_BUFF_STATE_START_BYTE_0 = ((uint8_t)0x00),
+  RX_CMD_BUFF_STATE_START_BYTE_1 = ((uint8_t)0x01),
+  RX_CMD_BUFF_STATE_MSG_LEN      = ((uint8_t)0x02),
+  RX_CMD_BUFF_STATE_HWID_LSB     = ((uint8_t)0x03),
+  RX_CMD_BUFF_STATE_HWID_MSB     = ((uint8_t)0x04),
+  RX_CMD_BUFF_STATE_MSG_ID_LSB   = ((uint8_t)0x05),
+  RX_CMD_BUFF_STATE_MSG_ID_MSB   = ((uint8_t)0x06),
+  RX_CMD_BUFF_STATE_ROUTE        = ((uint8_t)0x07),
+  RX_CMD_BUFF_STATE_OPCODE       = ((uint8_t)0x08),
+  RX_CMD_BUFF_STATE_PLD          = ((uint8_t)0x09),
+  RX_CMD_BUFF_STATE_COMPLETE     = ((uint8_t)0x0a)
+} rx_cmd_buff_state_t;
+
+// Common Data buffer
+typedef struct common_data_buff {
+  size_t       end_index;         
+  const size_t size;              
+  uint8_t      data[PLD_MAX_LEN]; 
+} common_data_t;
+
+// RX command buffer
+typedef struct rx_cmd_buff {
+  rx_cmd_buff_state_t state;             
+  size_t              start_index;       
+  size_t              end_index;         
+  const size_t        size;              
+  uint8_t             route_id;          
+  uint8_t             bus_msg_id;        
+  uint8_t             data[CMD_MAX_LEN]; 
+} rx_cmd_buff_t;
+
+// TX command buffer
+typedef struct tx_cmd_buff {
+  int          empty;             
+  size_t       start_index;       
+  size_t       end_index;         
+  const size_t size;              
+  uint8_t      data[CMD_MAX_LEN]; 
+} tx_cmd_buff_t;
+
+// Helper functions
+void clear_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o);
+void clear_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
+
+// Protocol functions
+void push_rx_cmd_buff(rx_cmd_buff_t* rx_cmd_buff_o, uint8_t b);
+void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o);
+uint8_t pop_tx_cmd_buff(tx_cmd_buff_t* tx_cmd_buff_o);
+
+// custom routing functions
+void msg_to_gnd(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+void msg_to_cdh(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+void msg_to_com(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+void msg_to_pay(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+
+#endif

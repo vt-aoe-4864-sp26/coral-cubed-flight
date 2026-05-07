@@ -2,3 +2,6 @@
 	path = third-party/coralmicro
 	url = https://github.com/google-coral/coralmicro.git
 
+[submodule "third-party/coralpico"]
+	path = third-party/coralpico
+	url = https://github.com/starbelt/coralpico.git

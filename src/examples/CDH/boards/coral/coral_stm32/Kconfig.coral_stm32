@@ -1,0 +1,2 @@
+config BOARD_CORAL_STM32
+    select SOC_STM32L496XX
