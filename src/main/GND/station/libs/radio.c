@@ -192,7 +192,14 @@ void radio_thread_entry(void *p1, void *p2, void *p3)
 
             if (!pending_msg.active)
             {
-                pending_msg.active = 1;
+                int is_ack = (new_tx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE ||
+                              new_tx.data[OPCODE_INDEX] == COMMON_NACK_OPCODE ||
+                              new_tx.data[OPCODE_INDEX] == BOOTLOADER_ACK_OPCODE ||
+                              new_tx.data[OPCODE_INDEX] == BOOTLOADER_NACK_OPCODE);
+
+                if (!is_ack) {
+                    pending_msg.active = 1;
+                }
                 pending_msg.retries = 0;
                 pending_msg.current_power_idx = 0;
 

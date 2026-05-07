@@ -10,6 +10,8 @@
 extern const struct gpio_dt_spec led1;
 extern const struct gpio_dt_spec led2;
 
+void tab_nvs_init(void);
+
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
 
 /* Command Processing Thread */
@@ -34,6 +36,8 @@ K_THREAD_DEFINE(cmd_processor_tid, 2048, cmd_processor_entry, NULL, NULL, NULL, 
 int main(void)
 {
     uint32_t dtr = 0;
+
+    tab_nvs_init();
 
     init_leds();
     init_radio();

@@ -13,6 +13,12 @@
 // TAB
 #include <tab.h>    // TAB header
 
+// NVS
+#include <zephyr/fs/nvs.h>
+#include <zephyr/storage/flash_map.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/device.h>
+
 // External handler functions
 extern int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 extern int handle_bootloader_erase(void);
@@ -26,6 +32,121 @@ extern int bootloader_active(void);
 #define MAX_PENDING_IDS 16
 static uint16_t pending_tx_ids[MAX_PENDING_IDS] = {0};
 static int pending_tx_active[MAX_PENDING_IDS] = {0};
+
+static struct nvs_fs fs;
+static uint16_t global_msg_id = 0;
+
+// NVS Keys
+#define NVS_MSG_ID_KEY      1
+#define NVS_QUEUE_HEAD_KEY  2
+#define NVS_QUEUE_TAIL_KEY  3
+#define NVS_QUEUE_COUNT_KEY 4
+#define NVS_QUEUE_BASE_KEY  100
+#define NVS_QUEUE_MAX_ITEMS 10
+
+static uint16_t queue_head = 0;
+static uint16_t queue_tail = 0;
+static uint16_t queue_count = 0;
+
+void tab_nvs_init(void) {
+  int rc = 0;
+  struct flash_pages_info info;
+
+  fs.flash_device = FIXED_PARTITION_DEVICE(storage_partition);
+  if (!device_is_ready(fs.flash_device)) {
+    return;
+  }
+  fs.offset = FIXED_PARTITION_OFFSET(storage_partition);
+  rc = flash_get_page_info_by_offs(fs.flash_device, fs.offset, &info);
+  if (rc) {
+    return;
+  }
+  fs.sector_size = info.size;
+  fs.sector_count = 10U; // Assuming 4K sectors, 10 sectors = 40K
+
+  rc = nvs_mount(&fs);
+  if (rc) {
+    return;
+  }
+  
+  if (nvs_read(&fs, NVS_MSG_ID_KEY, &global_msg_id, sizeof(global_msg_id)) <= 0) {
+    global_msg_id = 0;
+  }
+  if (nvs_read(&fs, NVS_QUEUE_HEAD_KEY, &queue_head, sizeof(queue_head)) <= 0) {
+    queue_head = 0;
+  }
+  if (nvs_read(&fs, NVS_QUEUE_TAIL_KEY, &queue_tail, sizeof(queue_tail)) <= 0) {
+    queue_tail = 0;
+  }
+  if (nvs_read(&fs, NVS_QUEUE_COUNT_KEY, &queue_count, sizeof(queue_count)) <= 0) {
+    queue_count = 0;
+  }
+}
+
+void tab_reset_nvs_msg_id(void) {
+  global_msg_id = 0;
+  nvs_write(&fs, NVS_MSG_ID_KEY, &global_msg_id, sizeof(global_msg_id));
+}
+
+int nvs_queue_push(rx_cmd_buff_t* cmd) {
+  if (queue_count >= NVS_QUEUE_MAX_ITEMS) {
+    return -1; // Queue full
+  }
+  uint16_t key = NVS_QUEUE_BASE_KEY + queue_tail;
+  
+  // Write the structure
+  int rc = nvs_write(&fs, key, cmd, sizeof(rx_cmd_buff_t));
+  if (rc < 0) return rc;
+
+  queue_tail = (queue_tail + 1) % NVS_QUEUE_MAX_ITEMS;
+  queue_count++;
+
+  nvs_write(&fs, NVS_QUEUE_TAIL_KEY, &queue_tail, sizeof(queue_tail));
+  nvs_write(&fs, NVS_QUEUE_COUNT_KEY, &queue_count, sizeof(queue_count));
+  return 0;
+}
+
+int nvs_queue_pop(rx_cmd_buff_t* cmd) {
+  if (queue_count == 0) {
+    return -1; // Queue empty
+  }
+  uint16_t key = NVS_QUEUE_BASE_KEY + queue_head;
+  
+  int rc = nvs_read(&fs, key, cmd, sizeof(rx_cmd_buff_t));
+  if (rc <= 0) return rc;
+
+  queue_head = (queue_head + 1) % NVS_QUEUE_MAX_ITEMS;
+  queue_count--;
+
+  nvs_write(&fs, NVS_QUEUE_HEAD_KEY, &queue_head, sizeof(queue_head));
+  nvs_write(&fs, NVS_QUEUE_COUNT_KEY, &queue_count, sizeof(queue_count));
+  return 0;
+}
+
+int nvs_queue_peek(rx_cmd_buff_t* cmd) {
+  if (queue_count == 0) {
+    return -1; // Queue empty
+  }
+  uint16_t key = NVS_QUEUE_BASE_KEY + queue_head;
+  
+  int rc = nvs_read(&fs, key, cmd, sizeof(rx_cmd_buff_t));
+  if (rc <= 0) return rc;
+
+  return 0;
+}
+
+void nvs_queue_clear(void) {
+  queue_head = 0;
+  queue_tail = 0;
+  queue_count = 0;
+  nvs_write(&fs, NVS_QUEUE_HEAD_KEY, &queue_head, sizeof(queue_head));
+  nvs_write(&fs, NVS_QUEUE_TAIL_KEY, &queue_tail, sizeof(queue_tail));
+  nvs_write(&fs, NVS_QUEUE_COUNT_KEY, &queue_count, sizeof(queue_count));
+}
+
+int nvs_queue_get_count(void) {
+  return queue_count;
+}
 
 static void tab_track_outgoing_id(uint16_t msg_id) {
   for (int i = 0; i < MAX_PENDING_IDS; i++) {
@@ -337,10 +458,12 @@ static void build_new_msg(uint8_t dest, rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, ui
 
     // Safely pull from RX if it exists (prevents unprompted demo crash)
     if (rx != NULL) {
-        rx->bus_msg_id += 1;
-        current_msg_id = rx->bus_msg_id;
         local_route_id = rx->route_id;
     }
+
+    global_msg_id += 1;
+    current_msg_id = global_msg_id;
+    nvs_write(&fs, NVS_MSG_ID_KEY, &global_msg_id, sizeof(global_msg_id));
 
     // Automatically log this outgoing ID so the board expects an ACK
     tab_track_outgoing_id((uint16_t)current_msg_id);

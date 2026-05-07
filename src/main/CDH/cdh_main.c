@@ -8,27 +8,105 @@ extern const struct gpio_dt_spec led2;
 
 K_MSGQ_DEFINE(rx_cmd_queue, sizeof(rx_cmd_buff_t), 20, 4);
 
+void tab_nvs_init(void);
+void tab_reset_nvs_msg_id(void);
+int nvs_queue_push(rx_cmd_buff_t* cmd);
+int nvs_queue_pop(rx_cmd_buff_t* cmd);
+int nvs_queue_peek(rx_cmd_buff_t* cmd);
+void nvs_queue_clear(void);
+int nvs_queue_get_count(void);
+
 void cmd_processor_entry(void)
 {
     rx_cmd_buff_t local_rx;
     tx_cmd_buff_t local_tx = {.size = CMD_MAX_LEN};
+    
+    bool waiting_for_ack = false;
+    uint16_t expected_ack_id = 0;
 
     while (1)
     {
-        if (k_msgq_get(&rx_cmd_queue, &local_rx, K_FOREVER) == 0)
+        // Execute stored commands first
+        if (nvs_queue_get_count() > 0 && !waiting_for_ack)
         {
-            clear_tx_cmd_buff(&local_tx);
-
-            if (local_rx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE)
+            if (nvs_queue_peek(&local_rx) == 0)
             {
-                k_sem_give(&com_awake_semaphore);
+                clear_tx_cmd_buff(&local_tx);
+                process_rx_packet(&local_rx, &local_tx);
+                if (!local_tx.empty)
+                {
+                    route_tx_packet(&local_tx);
+                }
+                
+                uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
+                if (dest_id == CDH) {
+                    // CDH handled it locally. We can pop it.
+                    rx_cmd_buff_t dummy;
+                    nvs_queue_pop(&dummy);
+                } else if (dest_id == PLD) {
+                    // We routed it to PLD. Wait for its ACK.
+                    waiting_for_ack = true;
+                    expected_ack_id = local_rx.bus_msg_id;
+                }
+            }
+        }
+
+        // Check for new incoming commands (non-blocking if queue has items and we are not waiting, otherwise wait)
+        k_timeout_t wait_time = (nvs_queue_get_count() > 0 && !waiting_for_ack) ? K_NO_WAIT : K_FOREVER;
+        
+        if (k_msgq_get(&rx_cmd_queue, &local_rx, wait_time) == 0)
+        {
+            if (local_rx.data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE)
+            {
+                nvs_queue_clear();
+                waiting_for_ack = false;
+                continue;
+            }
+            if (local_rx.data[OPCODE_INDEX] == COMMON_RESET_MSG_ID_OPCODE)
+            {
+                tab_reset_nvs_msg_id();
+                continue;
             }
 
-            process_rx_packet(&local_rx, &local_tx);
-
-            if (!local_tx.empty)
+            if (local_rx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE || 
+                local_rx.data[OPCODE_INDEX] == COMMON_NACK_OPCODE)
             {
-                route_tx_packet(&local_tx);
+                // Is this the ACK we are waiting for?
+                if (waiting_for_ack && local_rx.bus_msg_id == expected_ack_id) {
+                    rx_cmd_buff_t dummy;
+                    nvs_queue_pop(&dummy);
+                    waiting_for_ack = false;
+                }
+                // Also give the semaphore if it's an ACK
+                if (local_rx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE) {
+                    k_sem_give(&com_awake_semaphore);
+                }
+                
+                // Route this ACK back to whoever sent the command
+                clear_tx_cmd_buff(&local_tx);
+                process_rx_packet(&local_rx, &local_tx);
+                if (!local_tx.empty)
+                {
+                    route_tx_packet(&local_tx);
+                }
+                continue;
+            }
+
+            // Determine if command is meant for CDH or PLD to enqueue
+            uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
+            if (dest_id == CDH || dest_id == PLD)
+            {
+                nvs_queue_push(&local_rx);
+            }
+            else
+            {
+                // Unhandled route, just process immediately (or it gets dropped)
+                clear_tx_cmd_buff(&local_tx);
+                process_rx_packet(&local_rx, &local_tx);
+                if (!local_tx.empty)
+                {
+                    route_tx_packet(&local_tx);
+                }
             }
         }
     }
@@ -40,6 +118,7 @@ int main(void)
 {
     init_leds();
     init_gpio();
+    tab_nvs_init();
 
     // Power on COM immediately. The inrush current will may cause a brownout,
     // but since USB isn't started yet, it won't crash the terminal
