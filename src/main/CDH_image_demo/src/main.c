@@ -450,7 +450,7 @@ int main(void)
     printk("Flash OK\n");
 
     /* UART1 — TAB data channel */
-    uart1 = DEVICE_DT_GET(DT_NODELABEL(usart1));
+    uart1 = DEVICE_DT_GET(DT_NODELABEL(usart2));
     if (!device_is_ready(uart1)) {
         printk("FATAL: UART1 not ready\n");
         goto spin;
