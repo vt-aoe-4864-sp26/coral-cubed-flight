@@ -242,8 +242,8 @@ def debug_board(board: str):
     
     with serial_lock:
         try:
-            from demo import CDH, COM, COMG
-            dst_map = {"cdh": CDH, "com": COM, "comg": COMG}
+            from demo import CDH, COM, COMG, PLD
+            dst_map = {"cdh": CDH, "com": COM, "comg": COMG, "pld": PLD, "pay": PLD}
             dst = dst_map.get(board.lower())
             if dst is None:
                 raise HTTPException(status_code=400, detail=f"Invalid board: {board}")

@@ -90,25 +90,25 @@ class App(ctk.CTk):
 
         # NVS Safety
         self.reset_id_button = ctk.CTkButton(self.main_frame, text="Reset NVS IDs", fg_color="red", hover_color="darkred", font=self.base_font, command=self.reset_ids)
-        self.reset_id_button.grid(row=5, column=0, padx=20, pady=10)
+        self.reset_id_button.grid(row=6, column=0, padx=20, pady=5)
         self.clear_queue_button = ctk.CTkButton(self.main_frame, text="Clear NVS Queue", fg_color="red", hover_color="darkred", font=self.base_font, command=self.clear_queue)
-        self.clear_queue_button.grid(row=6, column=0, padx=20, pady=10)
+        self.clear_queue_button.grid(row=7, column=0, padx=20, pady=5)
 
         # Stored Results Section
         self.fetch_label = ctk.CTkLabel(self.main_frame, text="Stored Results", font=self.title_font)
-        self.fetch_label.grid(row=7, column=0, padx=20, pady=(20, 10))
+        self.fetch_label.grid(row=8, column=0, padx=20, pady=(20, 10))
         
         self.fetch_id_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Result Name to Fetch", font=self.base_font)
-        self.fetch_id_entry.grid(row=8, column=0, padx=20, pady=10)
+        self.fetch_id_entry.grid(row=9, column=0, padx=20, pady=10)
         
         self.fetch_button = ctk.CTkButton(self.main_frame, text="Fetch Result", font=self.base_font, fg_color="green", hover_color="darkgreen", command=self.fetch_result)
-        self.fetch_button.grid(row=9, column=0, padx=20, pady=5)
+        self.fetch_button.grid(row=10, column=0, padx=20, pady=5)
         
         self.list_res_button = ctk.CTkButton(self.main_frame, text="List All Results", font=self.base_font, fg_color="blue", hover_color="darkblue", command=self.list_results)
-        self.list_res_button.grid(row=10, column=0, padx=20, pady=5)
+        self.list_res_button.grid(row=11, column=0, padx=20, pady=5)
         
         self.clear_res_button = ctk.CTkButton(self.main_frame, text="Clear All Results", font=self.base_font, fg_color="red", hover_color="darkred", command=self.clear_results)
-        self.clear_res_button.grid(row=11, column=0, padx=20, pady=5)
+        self.clear_res_button.grid(row=12, column=0, padx=20, pady=5)
 
         # --- Right View: Blink & Debug Commands ---
         self.payload_frame = ctk.CTkFrame(self)
@@ -134,6 +134,9 @@ class App(ctk.CTk):
         self.debug_cdh_btn = ctk.CTkButton(self.payload_frame, text="Debug CDH", font=self.base_font, height=50, fg_color="gray", hover_color="darkgray", command=lambda: self.debug_board("cdh"))
         self.debug_cdh_btn.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
+        self.debug_pld_btn = ctk.CTkButton(self.payload_frame, text="Debug Payload", font=self.base_font, height=50, fg_color="gray", hover_color="darkgray", command=lambda: self.debug_board("pld"))
+        self.debug_pld_btn.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+
         # --- Bottom Right: Terminal Console ---
         self.console_frame = ctk.CTkFrame(self)
         self.console_frame.grid(row=1, column=1, columnspan=2, padx=20, pady=(0, 20), sticky="nsew")
@@ -143,7 +146,7 @@ class App(ctk.CTk):
         self.console_label = ctk.CTkLabel(self.console_frame, text="Satellite Traffic Console", font=self.title_font)
         self.console_label.grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
 
-        self.terminal_box = ctk.CTkTextbox(self.console_frame, font=("Courier New", 12), fg_color="black", text_color="#00FF00")
+        self.terminal_box = ctk.CTkTextbox(self.console_frame, font=("Courier New", 16), fg_color="black", text_color="#00FF00")
         self.terminal_box.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.terminal_box.insert("0.0", "--- Waiting for connection ---\n")
         self.terminal_box.configure(state="disabled")
