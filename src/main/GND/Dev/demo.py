@@ -16,7 +16,8 @@ from utils.path_utils import get_repo_root
 from utils.tab import *
 
 class PCB:
-    def __init__(self, port=None, BAUD=None, HWID=None, msgid=None):
+    def __init__(self, port=None, BAUD=None, HWID=None, ID=None, msgid=None):
+        self.ID = ID if ID is not None else DBG
         self.dev = port if port is not None else '/dev/ttyACM0'
         self.BAUD = BAUD if BAUD is not None else 115200
         self.HWID = HWID if HWID is not None else 0xccc3
@@ -100,61 +101,61 @@ class PCB:
     # opcodes
 
     def common_ack(self, dst=COM):
-        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def common_nack(self, dst=COM):
-        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(COMMON_NACK_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def common_debug(self, message: str, dst=COM):
-        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(COMMON_DEBUG_OPCODE, self.HWID, self.msgid, self.ID, dst)
         cmd.common_debug(message)
         self._send_and_wait(cmd)
 
     def common_data(self, data: list, dst=COM):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, dst)
         cmd.common_data(data)
         self._send_and_wait(cmd)
 
     def bootloader_ack(self, dst=COM):
-        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_ACK_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def bootloader_nack(self, dst=COM):
-        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_NACK_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def bootloader_ping(self, dst=COM):
-        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_PING_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def bootloader_erase(self, dst=COM):
-        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_ERASE_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
 
     def bootloader_write_page(self, page_number: int, page_data: list, dst=COM):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_OPCODE, self.HWID, self.msgid, self.ID, dst)
         cmd.bootloader_write_page(page_number=page_number, page_data=page_data)
         self._send_and_wait(cmd)
 
     def bootloader_write_page_addr32(self, addr: int, page_data: list, dst=COM):
-        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_WRITE_PAGE_ADDR32_OPCODE, self.HWID, self.msgid, self.ID, dst)
         cmd.bootloader_write_page_addr32(addr=addr, page_data=page_data)
         self._send_and_wait(cmd)
 
     def bootloader_jump(self, dst=COM):
-        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, GND, dst)
+        cmd = TxCmd(BOOTLOADER_JUMP_OPCODE, self.HWID, self.msgid, self.ID, dst)
         self._send_and_wait(cmd)
     
     def send_alive(self, destid):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, destid)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, destid)
         cmd.common_data([0x00,0x01,0x01])
         self._send_and_wait(cmd)
         
     def handshake(self):
         print("initiating uart handshake...")
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COMG)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         cmd.common_data([0x00,0x01,0x01]) # send alive
         success = self._send_and_wait(cmd, timeout=2.0, retries=5)
         if success:
@@ -165,56 +166,56 @@ class PCB:
             
     def reset_message_ids(self, dst=COM):
         # We send a COMMON_ACK with msg_id 0xFFFF to trigger the reset cascade
-        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, 0xFFFF, GND, dst)
+        cmd = TxCmd(COMMON_ACK_OPCODE, self.HWID, 0xFFFF, self.ID, dst)
         # We don't wait for ACK because resetting will break the flow, just blast it.
         packet_len = cmd.get_byte_count()
         self.serial_port.write(bytes(cmd.data[:packet_len]))
         self.msgid = 0
         
     def clear_cdh_queue(self):
-        cmd = TxCmd(COMMON_CLEAR_QUEUE_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_CLEAR_QUEUE_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         self._send_and_wait(cmd)
         
 
     # ==== Updated to route directly to CDH ==== #
     def cdh_enable_pay(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         cmd.common_data([0x02, 0x01, val])
         self._send_and_wait(cmd)
 
     def cdh_blink_demo(self):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         cmd.common_data([0x06, 0x01, 0x01])
         self._send_and_wait(cmd)
         
     # ==== Coral Micro Payload Commands ==== #
     def cdh_coral_wake(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         cmd.common_data([0x08, 0x01, val])
         self._send_and_wait(cmd)
         
     def cdh_coral_cam_on(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, CDH)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, CDH)
         cmd.common_data([0x09, 0x01, val])
         self._send_and_wait(cmd)
         
     def cdh_coral_infer_denby(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
         cmd.common_data([0x0A, 0x01, val])
         self._send_and_wait(cmd)
 
     def cdh_coral_infer_blk(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
         cmd.common_data([0x0D, 0x01, val])
         self._send_and_wait(cmd)
 
     def coral_run_demo(self, enable=True):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, PLD)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
         cmd.common_data([0x0b, 0x01, 0x01])
         self._send_and_wait(cmd)
 
@@ -252,29 +253,29 @@ class PCB:
 
     def enable_rf(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, COM)
         cmd.common_data([0x03, 0x01, val])
         self._send_and_wait(cmd)
 
     def enable_tx(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, COM)
         cmd.common_data([0x04, 0x01, val]) 
         self._send_and_wait(cmd)
 
     def enable_rx(self, enable=True):
         val = 0x01 if enable else 0x02
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, COM)
         cmd.common_data([0x05, 0x01, val]) 
         self._send_and_wait(cmd)
     
     def com_blink_demo(self):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COM)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, COM)
         cmd.common_data([0x07, 0x01, 0x01])
         self._send_and_wait(cmd)
 
     def comg_blink_demo(self):
-        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, GND, COMG)
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, COMG)
         cmd.common_data([0x07, 0x01, 0x01])
         self._send_and_wait(cmd)
 
@@ -282,7 +283,7 @@ class PCB:
 
 if __name__ == '__main__':
     # parse script arguments
-    port = '/dev/ttyACM0' # default
+    port = '/dev/ttyUSB0'  # default UART port for CDH board
     if len(sys.argv) == 2:
         port = sys.argv[1]
     elif len(sys.argv) > 2:
@@ -290,7 +291,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print(f"initializing pcb communication on {port}...")
-    flatsat = PCB(port=port, BAUD=115200, HWID=0xccc3, msgid=0x0000)
+    flatsat = PCB(port=port, BAUD=115200, HWID=0xccc3, ID = DBG, msgid=0x0000)
     try:
         # wait for device and connect
         flatsat._wait_for_serial(timeout=60)
@@ -300,45 +301,24 @@ if __name__ == '__main__':
 
         print("--- Commencing Tests ---")
         print("--------------------------------")
-        print("Verify Connection to Ground Station")
-        flatsat.handshake()
+        print("Verify Connection to CDH\n")
+        #flatsat.handshake()
 
-        # print("--- Blinking Ground Station---") 
-        # flatsat.comg_blink_demo()
-        # print("blinked comg")
+        # com blink demo
+        # flatsat.com_blink_demo()
+        # print("blinked com")
 
-        # time.sleep(10.0) # time for the iee stack to boot
-        # print("--- Blinking COM ---")
-        # test leds - com
-        flatsat.com_blink_demo()
-        print("blinked com")
-
-        # time.sleep(10.0) 
-        
-        # print("--- Blinking CDH ---")
-        # flatsat.cdh_blink_demo()
-        # print("blinked cdh")
-
-        # time.sleep(10.0)
-
-
-        # print("--- Testing Payload Routing & Inference ---")
-
-        # # enable payload eps
-        # print("Powering up Payload PCB from CDH...")
-        # flatsat.cdh_enable_pay(enable=True)
-        
-        # time.sleep(15.0)
-
-        # print("Waiting for FreeRTOS and Edge TPU to boot...")
+        # flatsat.cdh_coral_infer_denby()
         # time.sleep(5.0)
+        # flatsat.wait_for_inference()
 
-        flatsat.cdh_coral_infer_denby()
-        time.sleep(5.0)
-        flatsat.wait_for_inference()
+        # flatsat.cdh_coral_infer_blk()
+        # flatsat.wait_for_inference()
 
-        flatsat.cdh_coral_infer_blk()
-        flatsat.wait_for_inference()
+        # Send acknowledgments to CDH, COM, and PLD
+        flatsat.common_debug(message= "check", dst=CDH)
+        flatsat.common_debug(message= "check", dst=COM)
+
 
         print("--- Testing Complete ---")
     except Exception as e:

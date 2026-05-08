@@ -13,6 +13,20 @@
 // TAB
 #include "tab.h"    // TAB header
 
+// Helper to convert route IDs to strings
+const char* get_route_str(uint8_t route_id) {
+  switch(route_id) {
+    case GND: return "GND";
+    case COM: return "COM";
+    case CDH: return "CDH";
+    case PLD: return "PLD";
+    case COMG: return "COMG";
+    case DBG: return "DBG";
+    default: return "UNK";
+  }
+}
+
+
 // External handler functions
 extern int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t* rx_cmd_buff, tx_cmd_buff_t* tx_cmd_buff);
 extern int handle_bootloader_erase(void);
@@ -178,10 +192,8 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
             // It's a reply to our command. Close the loop silently.
             send_reply = 0; 
         } else {
-            // Unsolicited ACK! Treat it as a ping and bounce it back.
-            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
-            send_reply = 1;
+            // Unsolicited ACK or timed-out request. Drop it silently to prevent ACK storms.
+            send_reply = 0;
         }
         break;
       }
@@ -387,4 +399,9 @@ void msg_to_com(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* p
 // sends a brand new message to payload / coral
 void msg_to_pay(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   build_new_msg(PLD, rx, tx, opcode, pld, pld_len);
+}
+
+// Route debug messages back to CDH (treated as DBG destination)
+void msg_to_dbg(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
+  build_new_msg(DBG, rx, tx, opcode, pld, pld_len);
 }

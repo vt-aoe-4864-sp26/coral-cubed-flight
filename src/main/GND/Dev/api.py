@@ -9,7 +9,7 @@ from demo import PCB
 app = FastAPI(title="Flatsat Operations API", description="API for controlling the flatsat via the ground station.", version="1.0.0")
 
 # Global PCB instance and lock to ensure thread safety when communicating over serial
-flatsat: Optional[PCB] = None
+flatsat: Optional[PCB] # TODO: Update for optional source ID calls
 serial_lock = threading.Lock()
 
 class ConnectRequest(BaseModel):

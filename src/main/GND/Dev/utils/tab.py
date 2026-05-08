@@ -40,6 +40,7 @@ COM    = 0x01
 CDH    = 0x02
 PLD    = 0x03
 COMG  = 0x04
+DBG    = 0x05
 
 ## TAB command indices
 START_BYTE_0_INDEX = 0
@@ -278,6 +279,8 @@ def route_to_str(route,node):
     return 'pld'
   elif nibble==COMG:
     return 'comg'
+  elif nibble == DBG:
+    return 'dbg'
   else:
     return '???'
 

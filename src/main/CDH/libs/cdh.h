@@ -15,7 +15,12 @@
 // Zephyr Hardware Headers //
 #include <zephyr/drivers/gpio.h>
 
-// Macros //
+// ========== Macros ========== //
+
+// ========== Board Version ========== //
+// 1 = Clear NVS on boot (empty queue)
+// 2 = Retain NVS on boot (show queue contents)
+#define BOARD_VERSION 1
 
 // ========== Pin Definitions ========== //
 

@@ -177,6 +177,8 @@ const char* get_route_str(uint8_t route_id) {
     case COM: return "COM";
     case CDH: return "CDH";
     case PLD: return "PLD";
+    case COMG: return "COMG";
+    case DBG: return "DBG";
     default: return "UNK";
   }
 }
@@ -539,4 +541,8 @@ void msg_to_com(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* p
 // sends a brand new message to payload / coral
 void msg_to_pay(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
   build_new_msg(PLD, rx, tx, opcode, pld, pld_len);
+}
+
+void msg_to_dbg(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len) {
+  build_new_msg(DBG, rx, tx, opcode, pld, pld_len);
 }

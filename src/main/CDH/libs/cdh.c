@@ -194,7 +194,7 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
   case PLD:
     target_dev = uart_pay_dev;
     break;
-  case CDH:
+  case DBG:
     target_dev = uart_ext_dev;
     break;
   default:

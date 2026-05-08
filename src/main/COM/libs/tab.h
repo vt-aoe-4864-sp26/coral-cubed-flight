@@ -51,6 +51,8 @@
 #define COM ((uint8_t)0x01)
 #define CDH ((uint8_t)0x02)
 #define PLD ((uint8_t)0x03)
+#define COMG ((uint8_t)0x04)
+#define DBG ((uint8_t)0x05)
 
 // Typedefs
 
@@ -125,5 +127,6 @@ void msg_to_gnd(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* p
 void msg_to_cdh(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
 void msg_to_com(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
 void msg_to_pay(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
+void msg_to_dbg(rx_cmd_buff_t* rx, tx_cmd_buff_t* tx, uint8_t opcode, uint8_t* pld, size_t pld_len);
 
 #endif

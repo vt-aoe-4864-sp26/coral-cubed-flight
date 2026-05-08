@@ -94,13 +94,18 @@ void cmd_processor_entry(void)
 
             // Determine if command is meant for CDH or PLD to enqueue
             uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
+            bool enqueued = false;
+            
             if (dest_id == CDH || dest_id == PLD)
             {
-                nvs_queue_push(&local_rx);
+                if (nvs_queue_push(&local_rx) == 0) {
+                    enqueued = true;
+                }
             }
-            else
+            
+            if (!enqueued)
             {
-                // Unhandled route, just process immediately (or it gets dropped)
+                // Unhandled route or NVS queue failure, just process immediately
                 clear_tx_cmd_buff(&local_tx);
                 process_rx_packet(&local_rx, &local_tx);
                 if (!local_tx.empty)
@@ -175,6 +180,21 @@ int main(void)
     init_leds();
     init_gpio();
     tab_nvs_init();
+
+    switch(BOARD_VERSION) {
+        case 1:
+            nvs_queue_clear();
+            printk("Board Version 1: NVS Queue Cleared.\n");
+            break;
+        case 2:
+            printk("Board Version 2: NVS Queue Retained. Pending commands: %d\n", nvs_queue_get_count());
+            break;
+        default:
+            nvs_queue_clear();
+            printk("Unknown Board Version: NVS Queue Cleared.\n");
+            break;
+    }
+
     printk("Hardware Systems Online\n");
     
 
@@ -197,8 +217,8 @@ int main(void)
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");
 
-    printk("Loading Demo Commands\n");
-    load_demo_commands();
+    // printk("Loading Demo Commands\n");
+    // load_demo_commands();
 
     static tx_cmd_buff_t local_demo_tx = {.size = CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_demo_tx);
