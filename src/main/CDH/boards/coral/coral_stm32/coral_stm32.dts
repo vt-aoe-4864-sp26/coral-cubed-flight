@@ -11,9 +11,9 @@
 
     chosen {
         /* Routing the console and shell over the USB-C Virtual COM Port */
-        zephyr,console = &usart2;
-        zephyr,shell-uart = &usart2;
-        zephyr,uart-mcumgr = &usart2;
+        zephyr,console = &cdc_acm_uart0;
+        zephyr,shell-uart = &cdc_acm_uart0;
+        zephyr,uart-mcumgr = &cdc_acm_uart0;
         zephyr,sram = &sram0;
         zephyr,flash = &flash0;
     };

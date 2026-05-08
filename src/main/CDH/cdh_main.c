@@ -16,6 +16,8 @@ int nvs_queue_peek(rx_cmd_buff_t* cmd);
 void nvs_queue_clear(void);
 int nvs_queue_get_count(void);
 
+bool cdh_system_ready = false;
+
 void cmd_processor_entry(void)
 {
     rx_cmd_buff_t local_rx;
@@ -26,8 +28,10 @@ void cmd_processor_entry(void)
 
     while (1)
     {
+        bool has_pending_nvs = (cdh_system_ready && nvs_queue_get_count() > 0 && !waiting_for_ack);
+
         // Execute stored commands first
-        if (nvs_queue_get_count() > 0 && !waiting_for_ack)
+        if (has_pending_nvs)
         {
             if (nvs_queue_peek(&local_rx) == 0)
             {
@@ -54,7 +58,7 @@ void cmd_processor_entry(void)
         }
 
         // Check for new incoming commands (non-blocking if queue has items and we are not waiting, otherwise wait)
-        k_timeout_t wait_time = (nvs_queue_get_count() > 0 && !waiting_for_ack) ? K_NO_WAIT : K_FOREVER;
+        k_timeout_t wait_time = has_pending_nvs ? K_NO_WAIT : (cdh_system_ready ? K_FOREVER : K_MSEC(100));
         
         if (k_msgq_get(&rx_cmd_queue, &local_rx, wait_time) == 0)
         {
@@ -218,9 +222,10 @@ int main(void)
     gpio_pin_toggle_dt(&led1);
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");
+    cdh_system_ready = true;
 
-    // printk("Loading Demo Commands\n");
-    // load_demo_commands();
+    printk("Loading Demo Commands\n");
+    load_demo_commands();
 
     static tx_cmd_buff_t local_demo_tx = {.size = CMD_MAX_LEN};
     clear_tx_cmd_buff(&local_demo_tx);

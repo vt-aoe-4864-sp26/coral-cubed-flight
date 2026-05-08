@@ -4,12 +4,12 @@ from pydantic import BaseModel
 from typing import Optional
 import threading
 
-from demo import PCB
+from demo import PCB, GND
 
 app = FastAPI(title="Flatsat Operations API", description="API for controlling the flatsat via the ground station.", version="1.0.0")
 
 # Global PCB instance and lock to ensure thread safety when communicating over serial
-flatsat: Optional[PCB] # TODO: Update for optional source ID calls
+flatsat: Optional[PCB] = None # TODO: Update for optional source ID calls
 serial_lock = threading.Lock()
 
 class ConnectRequest(BaseModel):
@@ -23,17 +23,27 @@ class BooleanRequest(BaseModel):
 def read_root():
     return RedirectResponse(url="/docs")
 
+@app.get("/status")
+def get_status():
+    global flatsat
+    if flatsat:
+        return {"connected": True, "msg_id": flatsat.msgid}
+    return {"connected": False, "msg_id": 0}
+
 @app.post("/connect")
 def connect(req: ConnectRequest):
     global flatsat
     with serial_lock:
         try:
-            flatsat = PCB(port=req.port, BAUD=req.baud)
+            flatsat = PCB(port=req.port, BAUD=req.baud, ID=GND)
             flatsat._wait_for_serial(timeout=10)
             return {"status": "connected", "port": req.port}
         except Exception as e:
             flatsat = None
-            raise HTTPException(status_code=500, detail=f"Failed to connect: {str(e)}")
+            error_msg = str(e)
+            if "Device or resource busy" in error_msg:
+                error_msg += " (Make sure the port is not open in another program like VS Code Serial Monitor)"
+            raise HTTPException(status_code=500, detail=f"Failed to connect: {error_msg}")
 
 @app.post("/handshake")
 def handshake():
@@ -51,8 +61,8 @@ def handshake():
             # We can't let it exit the server. So we bypass `flatsat.handshake()` 
             # and just call `send_alive` and wait for a response, or just call it directly.
             # But let's just do it manually here to avoid exiting.
-            from demo import TxCmd, COMMON_DATA_OPCODE, GND, COMG
-            cmd = TxCmd(COMMON_DATA_OPCODE, flatsat.HWID, flatsat.msgid, GND, COMG)
+            from demo import TxCmd, COMMON_DATA_OPCODE, COM
+            cmd = TxCmd(COMMON_DATA_OPCODE, flatsat.HWID, flatsat.msgid, flatsat.ID, COM)
             cmd.common_data([0x00,0x01,0x01]) # send alive
             success = flatsat._send_and_wait(cmd, timeout=2.0, retries=5)
             if success:
@@ -93,21 +103,33 @@ def payload_power(req: BooleanRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/payload/run_demo")
-def payload_run_demo():
+@app.post("/payload/infer/denby")
+def payload_infer_denby():
     if not flatsat:
         raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
     
     with serial_lock:
         try:
-            flatsat.coral_run_demo()
+            flatsat.cdh_coral_infer_denby()
             success = flatsat.wait_for_inference(timeout=60.0)
             if success:
-                # wait_for_inference clears the buffer, but prints to stdout.
-                # In demo.py, it doesn't return the result string.
-                # We can just say it completed for now. 
-                # (Later we could modify demo.py to return the string.)
-                return {"status": "Inference completed"}
+                return {"status": "Denby Inference completed"}
+            else:
+                raise HTTPException(status_code=500, detail="Timeout waiting for inference")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/infer/blk")
+def payload_infer_blk():
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.cdh_coral_infer_blk()
+            success = flatsat.wait_for_inference(timeout=60.0)
+            if success:
+                return {"status": "Black Image Inference completed"}
             else:
                 raise HTTPException(status_code=500, detail="Timeout waiting for inference")
         except Exception as e:
@@ -154,5 +176,23 @@ def radio_enable(action: str, req: BooleanRequest):
                 raise HTTPException(status_code=400, detail="Invalid action. Use rf, tx, or rx.")
             
             return {"status": f"Radio {action} toggled", "enabled": req.enable}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/debug/{board}")
+def debug_board(board: str):
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            from demo import CDH, COM, COMG
+            dst_map = {"cdh": CDH, "com": COM, "comg": COMG}
+            dst = dst_map.get(board.lower())
+            if dst is None:
+                raise HTTPException(status_code=400, detail=f"Invalid board: {board}")
+            
+            flatsat.common_debug(message="check", dst=dst)
+            return {"status": f"Debug message sent to {board}"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

@@ -21,8 +21,8 @@ extern const struct gpio_dt_spec led1;
 extern const struct gpio_dt_spec led2;
 
 // ========== Configuration ========== //
-#define MAX_RETRIES 15
-#define RETRY_TIMEOUT_MS 750
+#define MAX_RETRIES 8
+#define RETRY_TIMEOUT_MS 1500
 #define RADIO_QUEUE_SIZE 10
 
 // nRF52833 Supported TX Power levels (escalation path)
