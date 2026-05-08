@@ -31,6 +31,9 @@ void cmd_processor_entry(void)
         {
             if (nvs_queue_peek(&local_rx) == 0)
             {
+                uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
+                uint16_t msg_id = local_rx.bus_msg_id;
+                
                 clear_tx_cmd_buff(&local_tx);
                 process_rx_packet(&local_rx, &local_tx);
                 if (!local_tx.empty)
@@ -38,7 +41,6 @@ void cmd_processor_entry(void)
                     route_tx_packet(&local_tx);
                 }
                 
-                uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
                 if (dest_id == CDH) {
                     // CDH handled it locally. We can pop it.
                     rx_cmd_buff_t dummy;
@@ -46,7 +48,7 @@ void cmd_processor_entry(void)
                 } else if (dest_id == PLD) {
                     // We routed it to PLD. Wait for its ACK.
                     waiting_for_ack = true;
-                    expected_ack_id = local_rx.bus_msg_id;
+                    expected_ack_id = msg_id;
                 }
             }
         }

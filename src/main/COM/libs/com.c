@@ -139,7 +139,7 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
     {
         send_to_radio = 1; // Over the air to Ground Station
     }
-    else if (dest_id == CDH || dest_id == PLD)
+    else if (dest_id == CDH || dest_id == PLD || dest_id == DBG)
     {
         target_uart = uart_cdh_dev; // Local physical UART
     }
