@@ -53,6 +53,8 @@
 #define VAR_CODE_CORAL_WAKE     ((uint8_t)0x08)
 #define VAR_CODE_CORAL_CAM_ON   ((uint8_t)0x09)
 #define VAR_CODE_CORAL_INFER_DENBY ((uint8_t)0x0a)
+#define VAR_CODE_CORAL_INFER_PIRATE ((uint8_t)0x11)
+#define VAR_CODE_CORAL_INFER_REGENT ((uint8_t)0x12)
 #define VAR_CODE_CORAL_INFER_BLK   ((uint8_t)0x0d)
 
 // ========== Testing & Debug

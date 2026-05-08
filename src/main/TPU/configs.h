@@ -15,6 +15,8 @@
 #define VAR_CODE_CORAL_CAM_ON      ((uint8_t)0x09)
 #define VAR_CODE_CORAL_INFER_DENBY ((uint8_t)0x0a)
 #define VAR_CODE_CORAL_INFER_BLK   ((uint8_t)0x0d)
+#define VAR_CODE_CORAL_INFER_PIRATE ((uint8_t)0x11)
+#define VAR_CODE_CORAL_INFER_REGENT ((uint8_t)0x12)
 #define VAR_CODE_FETCH_RESULT      ((uint8_t)0x0E)
 #define VAR_CODE_CLEAR_RESULTS     ((uint8_t)0x0F)
 #define VAR_CODE_LIST_RESULTS      ((uint8_t)0x10)
@@ -23,9 +25,10 @@
 #define VAR_ENABLE                 ((uint8_t)0x01)
 #define VAR_DISABLE                ((uint8_t)0x02)
 
-namespace coral_cubed {
-    constexpr char kModelPath[] = "/models/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite";
-    constexpr char kImageDenbyPath[] = "/images/denby.rgb";
-    constexpr char kImageBlkPath[] = "/images/blk.rgb";
-    constexpr int kTensorArenaSize = 8 * 1024 * 1024;
-}
+// Removed namespace to ensure compatibility with all build stages
+#define TPU_MODEL_PATH "/ssd_mobilenet_v2_face_quant_postprocess_edgetpu.tflite"
+#define TPU_IMAGE_DENBY_PATH "/denby.rgb"
+#define TPU_IMAGE_BLK_PATH "/blk.rgb"
+#define TPU_IMAGE_PIRATE_PATH "/pirate_denby.rgb"
+#define TPU_IMAGE_REGENT_PATH "/regent_denby.rgb"
+#define TPU_TENSOR_ARENA_SIZE (8 * 1024 * 1024)

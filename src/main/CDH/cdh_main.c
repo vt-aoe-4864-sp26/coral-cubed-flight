@@ -101,8 +101,13 @@ void cmd_processor_entry(void)
             // Determine if command is meant for CDH or PLD to enqueue
             uint8_t dest_id = (local_rx.data[ROUTE_INDEX] & 0xF0) >> 4;
             bool enqueued = false;
-            
-            if (dest_id == CDH || dest_id == PLD)
+
+            if (dest_id == CDH && (local_rx.data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE || 
+                                   local_rx.data[OPCODE_INDEX] == COMMON_SYNC_MSG_ID_OPCODE))
+            {
+                enqueued = false; // Bypass NVS for immediate debug/sync response
+            }
+            else if (dest_id == CDH || dest_id == PLD)
             {
                 if (nvs_queue_push(&local_rx) == 0) {
                     enqueued = true;
@@ -218,7 +223,7 @@ int main(void)
 
     // Sync with COM
     printk("COM is powered. Starting Handshake...\n");
-    k_msleep(50000); // yikes
+    k_msleep(2000); 
     gpio_pin_toggle_dt(&led1);
     check_com_online(); // TODO: overcome COM delay for alive ACK.
     printk("Handshake Complete! COM is online.\n");

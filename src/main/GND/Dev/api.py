@@ -145,6 +145,30 @@ def payload_infer_blk(name: str = "RESULT01"):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/payload/infer/pirate")
+def payload_infer_pirate(name: str = "RESULT01"):
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.cdh_coral_infer_pirate(name=name)
+            return {"status": "Pirate Denby Inference triggered", "name": name}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/infer/regent")
+def payload_infer_regent(name: str = "RESULT01"):
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.cdh_coral_infer_regent(name=name)
+            return {"status": "Regent Denby Inference triggered", "name": name}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/payload/fetch_result/{name}")
 def payload_fetch_result(name: str):
     if not flatsat:

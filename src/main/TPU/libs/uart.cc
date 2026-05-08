@@ -43,13 +43,14 @@ extern "C"
 
         switch (var_code)
         {
+        case VAR_CODE_ALIVE:
+            printf("UART CMD: Alive Handshake Received\r\n");
+            return 1;
         case VAR_CODE_CORAL_WAKE:
-            // printf("TAB Command: Coral Wake (%d)\r\n", *val_ptr);
-            //  TODO: implement wake
+            printf("UART CMD: Coral Wake\r\n");
             return 1;
         case VAR_CODE_CORAL_CAM_ON:
-            // printf("TAB Command: Coral Cam On (%d)\r\n", *val_ptr);
-            //  TODO: implement cam on
+            printf("UART CMD: Coral Cam On\r\n");
             return 1;
         case VAR_CODE_CORAL_INFER_DENBY:
         case VAR_CODE_RUN_DEMO:
@@ -73,6 +74,26 @@ extern "C"
             }
             printf("UART CMD: Start Black Inference -> name='%s'\r\n", g_inference_name);
             g_run_inference = 2;
+            return 1;
+        case VAR_CODE_CORAL_INFER_PIRATE:
+            if (var_len >= 8) {
+                memcpy(g_inference_name, val_ptr, 8);
+                g_inference_name[8] = '\0';
+            } else {
+                strncpy(g_inference_name, "PIRATE__", 9);
+            }
+            printf("UART CMD: Start Pirate Inference -> name='%s'\r\n", g_inference_name);
+            g_run_inference = 3;
+            return 1;
+        case VAR_CODE_CORAL_INFER_REGENT:
+            if (var_len >= 8) {
+                memcpy(g_inference_name, val_ptr, 8);
+                g_inference_name[8] = '\0';
+            } else {
+                strncpy(g_inference_name, "REGENT__", 9);
+            }
+            printf("UART CMD: Start Regent Inference -> name='%s'\r\n", g_inference_name);
+            g_run_inference = 4;
             return 1;
         case VAR_CODE_FETCH_RESULT:
             // Payload: [VAR_CODE, LEN(8), name[0..7]]
@@ -172,11 +193,15 @@ void SendInferenceResult(uint8_t *result_data, size_t len)
                 FlushTxBuffer();
             }
         }
+        
+        if (bytes <= 0) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
         taskYIELD();
     }
 }
 
 void StartUartTask()
 {
-    xTaskCreate(UartTaskMain, "UartTask", configMINIMAL_STACK_SIZE * 4, nullptr, 3, nullptr);
+    xTaskCreate(UartTaskMain, "UartTask", configMINIMAL_STACK_SIZE * 8, nullptr, 3, nullptr);
 }

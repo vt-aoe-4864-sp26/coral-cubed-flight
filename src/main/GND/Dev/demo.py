@@ -302,6 +302,20 @@ class PCB:
         cmd.common_data([0x0D, 0x08] + name_bytes)
         self._send_and_wait(cmd)
 
+    def cdh_coral_infer_pirate(self, name="RESULT01"):
+        # Ensure name is exactly 8 chars
+        name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
+        cmd.common_data([0x11, 0x08] + name_bytes)
+        self._send_and_wait(cmd)
+
+    def cdh_coral_infer_regent(self, name="RESULT01"):
+        # Ensure name is exactly 8 chars
+        name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
+        cmd.common_data([0x12, 0x08] + name_bytes)
+        self._send_and_wait(cmd)
+
     def cdh_coral_fetch_result(self, name):
         # name is the 8-char string of the inference result
         name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))

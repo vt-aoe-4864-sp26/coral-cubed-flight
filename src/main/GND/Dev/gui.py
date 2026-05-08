@@ -75,40 +75,46 @@ class App(ctk.CTk):
         self.choice_blk = ctk.CTkRadioButton(self.main_frame, text="Black Image", variable=self.image_choice, value="blk", font=self.base_font, command=self.update_image_preview)
         self.choice_blk.grid(row=2, column=0, padx=20, pady=10)
         
+        self.choice_pirate = ctk.CTkRadioButton(self.main_frame, text="Pirate Denby", variable=self.image_choice, value="pirate", font=self.base_font, command=self.update_image_preview)
+        self.choice_pirate.grid(row=3, column=0, padx=20, pady=10)
+        
+        self.choice_regent = ctk.CTkRadioButton(self.main_frame, text="Regent Denby", variable=self.image_choice, value="regent", font=self.base_font, command=self.update_image_preview)
+        self.choice_regent.grid(row=4, column=0, padx=20, pady=10)
+        
         # Image Preview
         self.image_label = ctk.CTkLabel(self.main_frame, text="")
-        self.image_label.grid(row=3, column=0, padx=20, pady=20)
+        self.image_label.grid(row=5, column=0, padx=20, pady=20)
         self.load_images()
         self.update_image_preview()
         
         self.result_name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Result Name (8 chars)", font=self.base_font)
-        self.result_name_entry.grid(row=4, column=0, padx=20, pady=10)
+        self.result_name_entry.grid(row=6, column=0, padx=20, pady=10)
         self.result_name_entry.insert(0, "RESULT01")
         
         self.infer_button = ctk.CTkButton(self.main_frame, text="Confirm & Send Inference", font=self.base_font, height=40, command=self.run_inference)
-        self.infer_button.grid(row=5, column=0, padx=20, pady=10)
+        self.infer_button.grid(row=7, column=0, padx=20, pady=10)
 
         # NVS Safety
         self.reset_id_button = ctk.CTkButton(self.main_frame, text="Reset NVS IDs", fg_color="red", hover_color="darkred", font=self.base_font, command=self.reset_ids)
-        self.reset_id_button.grid(row=6, column=0, padx=20, pady=5)
+        self.reset_id_button.grid(row=8, column=0, padx=20, pady=5)
         self.clear_queue_button = ctk.CTkButton(self.main_frame, text="Clear NVS Queue", fg_color="red", hover_color="darkred", font=self.base_font, command=self.clear_queue)
-        self.clear_queue_button.grid(row=7, column=0, padx=20, pady=5)
+        self.clear_queue_button.grid(row=9, column=0, padx=20, pady=5)
 
         # Stored Results Section
         self.fetch_label = ctk.CTkLabel(self.main_frame, text="Stored Results", font=self.title_font)
-        self.fetch_label.grid(row=8, column=0, padx=20, pady=(20, 10))
+        self.fetch_label.grid(row=10, column=0, padx=20, pady=(20, 10))
         
         self.fetch_id_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Result Name to Fetch", font=self.base_font)
-        self.fetch_id_entry.grid(row=9, column=0, padx=20, pady=10)
+        self.fetch_id_entry.grid(row=11, column=0, padx=20, pady=10)
         
         self.fetch_button = ctk.CTkButton(self.main_frame, text="Fetch Result", font=self.base_font, fg_color="green", hover_color="darkgreen", command=self.fetch_result)
-        self.fetch_button.grid(row=10, column=0, padx=20, pady=5)
+        self.fetch_button.grid(row=12, column=0, padx=20, pady=5)
         
         self.list_res_button = ctk.CTkButton(self.main_frame, text="List All Results", font=self.base_font, fg_color="blue", hover_color="darkblue", command=self.list_results)
-        self.list_res_button.grid(row=11, column=0, padx=20, pady=5)
+        self.list_res_button.grid(row=13, column=0, padx=20, pady=5)
         
         self.clear_res_button = ctk.CTkButton(self.main_frame, text="Clear All Results", font=self.base_font, fg_color="red", hover_color="darkred", command=self.clear_results)
-        self.clear_res_button.grid(row=12, column=0, padx=20, pady=5)
+        self.clear_res_button.grid(row=14, column=0, padx=20, pady=5)
 
         # --- Right View: Blink & Debug Commands ---
         self.payload_frame = ctk.CTkFrame(self)
@@ -156,18 +162,21 @@ class App(ctk.CTk):
         self.check_status()
 
     def load_images(self):
-        denby_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "TPU", "images", "denby.png"))
+        img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "TPU", "images"))
         
-        if os.path.exists(denby_path):
-            try:
-                pil_denby = Image.open(denby_path)
-                self.ctk_denby = ctk.CTkImage(light_image=pil_denby, dark_image=pil_denby, size=(200, 200))
-            except Exception as e:
-                self.ctk_denby = None
-                self.log_msg(f"Failed to load {denby_path}: {e}")
-        else:
-            self.ctk_denby = None
-            self.log_msg(f"Warning: {denby_path} not found.")
+        def load_img(name):
+            path = os.path.join(img_dir, f"{name}.png")
+            if os.path.exists(path):
+                try:
+                    pil_img = Image.open(path)
+                    return ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(200, 200))
+                except Exception as e:
+                    self.log_msg(f"Failed to load {path}: {e}")
+            return None
+
+        self.ctk_denby = load_img("denby")
+        self.ctk_pirate = load_img("pirate_denby")
+        self.ctk_regent = load_img("regent_denby")
 
         # Create a solid black image dynamically using Pillow
         pil_blk = Image.new('RGB', (200, 200), color='black')
@@ -175,12 +184,16 @@ class App(ctk.CTk):
 
     def update_image_preview(self):
         choice = self.image_choice.get()
-        if choice == "denby" and hasattr(self, 'ctk_denby') and self.ctk_denby:
-            self.image_label.configure(image=self.ctk_denby, text="")
-        elif choice == "blk":
-            self.image_label.configure(image=self.ctk_blk, text="")
+        img = None
+        if choice == "denby": img = self.ctk_denby
+        elif choice == "blk": img = self.ctk_blk
+        elif choice == "pirate": img = self.ctk_pirate
+        elif choice == "regent": img = self.ctk_regent
+        
+        if img:
+            self.image_label.configure(image=img, text="")
         else:
-            self.image_label.configure(image="", text="[Image Not Found]")
+            self.image_label.configure(image="", text=f"[{choice.upper()} Not Found]")
 
     def check_status(self):
         def task():

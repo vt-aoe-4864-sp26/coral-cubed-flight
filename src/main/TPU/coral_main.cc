@@ -24,28 +24,39 @@
 
 // ===== APPS ===== //
 
-STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, coral_cubed::kTensorArenaSize);
+STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, TPU_TENSOR_ARENA_SIZE);
 
 extern "C" [[noreturn]] void app_main(void *param)
 {
   (void)param;
-  printf("Coral Cubed Payload Initializing...\r\n");
+  printf("\r\n\r\n--- Coral Cubed Payload Booting ---\r\n");
+  printf("Initializing Hardware and Pins...\r\n");
 
   coralmicro::LedSet(coralmicro::Led::kStatus, true);
 
+  printf("Powering up Edge TPU...\r\n");
   // Store the context here to keep the Edge TPU awake!
   auto tpu_context = coral_cubed::InitEdgeTpu();
   if (!tpu_context)
   {
-    // printf("TPU Not Initialized...\r\n");
+    printf("WARNING: Edge TPU Not Initialized (Hardware failure or not present)\r\n");
+  } else {
+    printf("Edge TPU Initialized successfully.\r\n");
   }
 
-  StartUartTask();
-  printf("TPU Initialized\r\n");
-
+  printf("Setting up Filesystem directories...\r\n");
   g_run_inference = 0;
   // Ensure the results directory exists
-  coralmicro::LfsMakeDirs("/results");
+  if (coralmicro::LfsMakeDirs("/results")) {
+    printf("Filesystem OK: '/results' directory ready.\r\n");
+  } else {
+    printf("Filesystem WARNING: Could not ensure '/results' exists.\r\n");
+  }
+
+  printf("Starting UART Communication Task (HWID=0x%02X%02X, ID=PLD)...\r\n", SAT_HWID_MSB, SAT_HWID_LSB);
+  StartUartTask();
+  
+  printf("Initialization Complete. Entering main loop.\r\n");
 
   while (true)
   {
@@ -54,11 +65,16 @@ extern "C" [[noreturn]] void app_main(void *param)
       uint8_t infer_type = g_run_inference;
       g_run_inference = 0;
 
-      coral_cubed::ModelRunner runner(coral_cubed::kModelPath, tensor_arena, coral_cubed::kTensorArenaSize);
+      printf("Triggering Inference Task (type=%d)\r\n", infer_type);
+      coral_cubed::ModelRunner runner(TPU_MODEL_PATH, tensor_arena, TPU_TENSOR_ARENA_SIZE);
 
       if (runner.IsValid())
       {
-        const char* img_path = (infer_type == 2) ? coral_cubed::kImageBlkPath : coral_cubed::kImageDenbyPath;
+        const char* img_path = TPU_IMAGE_DENBY_PATH;
+        if (infer_type == 2) img_path = TPU_IMAGE_BLK_PATH;
+        else if (infer_type == 3) img_path = TPU_IMAGE_PIRATE_PATH;
+        else if (infer_type == 4) img_path = TPU_IMAGE_REGENT_PATH;
+
         printf("Running inference on image: %s (saving as '%s')\r\n", img_path, g_inference_name);
         if (runner.RunInferenceFromLfs(img_path))
         {
@@ -72,11 +88,15 @@ extern "C" [[noreturn]] void app_main(void *param)
           if (results.size() > 0)
           {
             if (infer_type == 2) { res_str = "DENBY?!!"; res_len = 8; }
+            else if (infer_type == 3) { res_str = "PIRATE!!"; res_len = 8; }
+            else if (infer_type == 4) { res_str = "REGENT!!"; res_len = 8; }
             else { res_str = "DENBY!"; res_len = 6; }
           }
           else
           {
             if (infer_type == 2) { res_str = "NO_DENBY!"; res_len = 9; }
+            else if (infer_type == 3) { res_str = "NO_PIRATE"; res_len = 9; }
+            else if (infer_type == 4) { res_str = "NO_REGENT"; res_len = 9; }
             else { res_str = "NO_DENBY?!"; res_len = 10; }
           }
           
