@@ -33,6 +33,9 @@ BOOTLOADER_JUMP_OPCODE              = 0x0b
 
 COMMON_RESET_MSG_ID_OPCODE          = 0x1A
 COMMON_CLEAR_QUEUE_OPCODE           = 0x1B
+COMMON_SYNC_MSG_ID_OPCODE            = 0x1C
+
+VAR_CODE_LIST_RESULTS               = 0x10
 
 ## Route Nibble IDs
 GND    = 0x00
@@ -299,6 +302,8 @@ def cmd_bytes_to_str(data):
     cmd_str += 'common_reset_msg_id'
   elif data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE:
     cmd_str += 'common_clear_queue'
+  elif data[OPCODE_INDEX] == COMMON_SYNC_MSG_ID_OPCODE:
+    cmd_str += 'common_sync_msg_id'
   elif data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE:
     cmd_str += 'common_debug'
     pld_str = ' "'
@@ -379,6 +384,8 @@ class TxCmd:
     elif self.data[OPCODE_INDEX] == COMMON_RESET_MSG_ID_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06
     elif self.data[OPCODE_INDEX] == COMMON_CLEAR_QUEUE_OPCODE:
+      self.data[MSG_LEN_INDEX] = 0x06
+    elif self.data[OPCODE_INDEX] == COMMON_SYNC_MSG_ID_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06
     elif self.data[OPCODE_INDEX] == COMMON_DEBUG_OPCODE:
       self.data[MSG_LEN_INDEX] = 0x06

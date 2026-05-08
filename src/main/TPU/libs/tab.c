@@ -41,6 +41,8 @@ extern int bootloader_active(void);
 static uint16_t pending_tx_ids[MAX_PENDING_IDS] = {0};
 static int pending_tx_active[MAX_PENDING_IDS] = {0};
 
+static uint16_t last_processed_msg_id = 0xFFFF;
+
 static void tab_track_outgoing_id(uint16_t msg_id) {
   for (int i = 0; i < MAX_PENDING_IDS; i++) {
     if (!pending_tx_active[i]) {
@@ -183,6 +185,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
     int success = 0;
     int send_reply = 1; // Flag to dictate transmission
 
+    uint16_t current_msg_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
+    int is_duplicate = (current_msg_id == last_processed_msg_id);
+    last_processed_msg_id = current_msg_id;
+
     switch(rx_cmd_buff_o->data[OPCODE_INDEX]) {
       case COMMON_ACK_OPCODE: {
         uint16_t incoming_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | 
@@ -201,6 +207,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         send_reply = 0; // Always consume NACKs quietly to prevent loops
         break;
       case COMMON_DEBUG_OPCODE:
+        if (is_duplicate) {
+          send_reply = 0;
+          break;
+        }
         tx_cmd_buff_o->data[MSG_LEN_INDEX] = rx_cmd_buff_o->data[MSG_LEN_INDEX];
         tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_DEBUG_OPCODE;
         for(i=PLD_START_INDEX; i<rx_cmd_buff_o->end_index; i++) {
@@ -212,7 +222,11 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
           common_data_buff.data[i-PLD_START_INDEX] = rx_cmd_buff_o->data[i];
         }
         common_data_buff.end_index = rx_cmd_buff_o->end_index-PLD_START_INDEX;
-        success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
+        if (!is_duplicate) {
+          success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
+        } else {
+          success = 1; // Duplicate, skip action but ACK
+        }
         
         if(tx_cmd_buff_o->empty) {
           if(success) {
@@ -225,6 +239,13 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         } else {
             send_reply = 1; // Custom payload was built, guarantee transmission
         }
+        break;
+      case COMMON_SYNC_MSG_ID_OPCODE:
+        tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
+        tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+        // TPU doesn't use global_msg_id in the same way (it's not persistent), but we'll return its bus_msg_id
+        tx_cmd_buff_o->data[MSG_ID_LSB_INDEX] = (uint8_t)(rx_cmd_buff_o->bus_msg_id & 0xFF);
+        tx_cmd_buff_o->data[MSG_ID_MSB_INDEX] = (uint8_t)((rx_cmd_buff_o->bus_msg_id >> 8) & 0xFF);
         break;
       case BOOTLOADER_ACK_OPCODE:
         tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);

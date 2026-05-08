@@ -35,6 +35,7 @@ static int pending_tx_active[MAX_PENDING_IDS] = {0};
 
 static struct nvs_fs fs;
 static uint16_t global_msg_id = 0;
+static uint16_t last_processed_msg_id = 0xFFFF;
 #define NVS_MSG_ID_KEY 1
 
 void tab_nvs_init(void) {
@@ -206,6 +207,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
     int success = 0;
     int send_reply = 1; // Flag to dictate transmission
 
+    uint16_t current_msg_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | rx_cmd_buff_o->data[MSG_ID_LSB_INDEX];
+    int is_duplicate = (current_msg_id == last_processed_msg_id);
+    last_processed_msg_id = current_msg_id;
+
     switch(rx_cmd_buff_o->data[OPCODE_INDEX]) {
       case COMMON_ACK_OPCODE: {
         uint16_t incoming_id = (rx_cmd_buff_o->data[MSG_ID_MSB_INDEX] << 8) | 
@@ -227,10 +232,8 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
             // It's a reply to our command. Close the loop silently.
             send_reply = 0; 
         } else {
-            // Unsolicited ACK! Treat it as a ping and bounce it back.
-            tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
-            tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
-            send_reply = 1;
+            // Unsolicited ACK or timed-out request. Drop it silently to prevent ACK storms.
+            send_reply = 0;
         }
         break;
       }
@@ -238,6 +241,10 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         send_reply = 0; // Always consume NACKs quietly to prevent loops
         break;
       case COMMON_DEBUG_OPCODE:
+        if (is_duplicate) {
+          send_reply = 0;
+          break;
+        }
         tx_cmd_buff_o->data[MSG_LEN_INDEX] = rx_cmd_buff_o->data[MSG_LEN_INDEX];
         tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_DEBUG_OPCODE;
         for(i=PLD_START_INDEX; i<rx_cmd_buff_o->end_index; i++) {
@@ -249,7 +256,11 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
           common_data_buff.data[i-PLD_START_INDEX] = rx_cmd_buff_o->data[i];
         }
         common_data_buff.end_index = rx_cmd_buff_o->end_index-PLD_START_INDEX;
-        success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
+        if (!is_duplicate) {
+          success = handle_common_data(common_data_buff,rx_cmd_buff_o, tx_cmd_buff_o);
+        } else {
+          success = 1; // Duplicate, skip action but ACK
+        }
         
         if(tx_cmd_buff_o->empty) {
           if(success) {
@@ -262,6 +273,12 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
         } else {
             send_reply = 1; // Custom payload was built, guarantee transmission
         }
+        break;
+      case COMMON_SYNC_MSG_ID_OPCODE:
+        tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);
+        tx_cmd_buff_o->data[OPCODE_INDEX] = COMMON_ACK_OPCODE;
+        tx_cmd_buff_o->data[MSG_ID_LSB_INDEX] = (uint8_t)(global_msg_id & 0xFF);
+        tx_cmd_buff_o->data[MSG_ID_MSB_INDEX] = (uint8_t)((global_msg_id >> 8) & 0xFF);
         break;
       case BOOTLOADER_ACK_OPCODE:
         tx_cmd_buff_o->data[MSG_LEN_INDEX] = ((uint8_t)0x06);

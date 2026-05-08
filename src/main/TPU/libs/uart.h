@@ -10,8 +10,10 @@ extern "C"
 }
 
 extern volatile uint8_t g_run_inference;
-extern volatile uint16_t g_last_inference_msg_id;
-extern volatile uint16_t g_fetch_inference_msg_id;
+extern char g_inference_name[9];  // 8-char name + null terminator
+extern char g_fetch_name[9];      // 8-char name + null terminator
+extern volatile uint8_t g_clear_results;
+extern volatile uint8_t g_list_results;
 
 
 void StartUartTask();

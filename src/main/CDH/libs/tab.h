@@ -40,6 +40,7 @@
 // New Opcodes
 #define COMMON_RESET_MSG_ID_OPCODE          ((uint8_t)0x1A)
 #define COMMON_CLEAR_QUEUE_OPCODE           ((uint8_t)0x1B)
+#define COMMON_SYNC_MSG_ID_OPCODE           ((uint8_t)0x1C)
 
 // BOOTLOADER_ACK reasons
 #define BOOTLOADER_ACK_REASON_PONG   ((uint8_t)0x00)

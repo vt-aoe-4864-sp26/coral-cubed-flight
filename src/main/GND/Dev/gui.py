@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import requests
 import threading
+import time
 from PIL import Image
 import os
 
@@ -46,10 +47,13 @@ class App(ctk.CTk):
         self.connect_button.grid(row=3, column=0, padx=20, pady=10)
         
         self.handshake_button = ctk.CTkButton(self.sidebar_frame, text="Handshake", font=self.base_font, command=self.handshake)
-        self.handshake_button.grid(row=4, column=0, padx=20, pady=10)
+        self.handshake_button.grid(row=4, column=0, padx=20, pady=5)
+        
+        self.sync_id_button = ctk.CTkButton(self.sidebar_frame, text="Sync ID (COM)", font=self.base_font, command=lambda: self.sync_id("com"))
+        self.sync_id_button.grid(row=5, column=0, padx=20, pady=5)
         
         self.msgid_label = ctk.CTkLabel(self.sidebar_frame, text="Last Msg ID: --", font=self.base_font)
-        self.msgid_label.grid(row=5, column=0, padx=20, pady=10)
+        self.msgid_label.grid(row=6, column=0, padx=20, pady=10)
         
         # Status Log
         self.status_box = ctk.CTkTextbox(self.sidebar_frame, height=200, font=self.base_font)
@@ -77,14 +81,34 @@ class App(ctk.CTk):
         self.load_images()
         self.update_image_preview()
         
+        self.result_name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Result Name (8 chars)", font=self.base_font)
+        self.result_name_entry.grid(row=4, column=0, padx=20, pady=10)
+        self.result_name_entry.insert(0, "RESULT01")
+        
         self.infer_button = ctk.CTkButton(self.main_frame, text="Confirm & Send Inference", font=self.base_font, height=40, command=self.run_inference)
-        self.infer_button.grid(row=4, column=0, padx=20, pady=20)
+        self.infer_button.grid(row=5, column=0, padx=20, pady=10)
 
         # NVS Safety
         self.reset_id_button = ctk.CTkButton(self.main_frame, text="Reset NVS IDs", fg_color="red", hover_color="darkred", font=self.base_font, command=self.reset_ids)
         self.reset_id_button.grid(row=5, column=0, padx=20, pady=10)
         self.clear_queue_button = ctk.CTkButton(self.main_frame, text="Clear NVS Queue", fg_color="red", hover_color="darkred", font=self.base_font, command=self.clear_queue)
         self.clear_queue_button.grid(row=6, column=0, padx=20, pady=10)
+
+        # Stored Results Section
+        self.fetch_label = ctk.CTkLabel(self.main_frame, text="Stored Results", font=self.title_font)
+        self.fetch_label.grid(row=7, column=0, padx=20, pady=(20, 10))
+        
+        self.fetch_id_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Result Name to Fetch", font=self.base_font)
+        self.fetch_id_entry.grid(row=8, column=0, padx=20, pady=10)
+        
+        self.fetch_button = ctk.CTkButton(self.main_frame, text="Fetch Result", font=self.base_font, fg_color="green", hover_color="darkgreen", command=self.fetch_result)
+        self.fetch_button.grid(row=9, column=0, padx=20, pady=5)
+        
+        self.list_res_button = ctk.CTkButton(self.main_frame, text="List All Results", font=self.base_font, fg_color="blue", hover_color="darkblue", command=self.list_results)
+        self.list_res_button.grid(row=10, column=0, padx=20, pady=5)
+        
+        self.clear_res_button = ctk.CTkButton(self.main_frame, text="Clear All Results", font=self.base_font, fg_color="red", hover_color="darkred", command=self.clear_results)
+        self.clear_res_button.grid(row=11, column=0, padx=20, pady=5)
 
         # --- Right View: Blink & Debug Commands ---
         self.payload_frame = ctk.CTkFrame(self)
@@ -110,7 +134,22 @@ class App(ctk.CTk):
         self.debug_cdh_btn = ctk.CTkButton(self.payload_frame, text="Debug CDH", font=self.base_font, height=50, fg_color="gray", hover_color="darkgray", command=lambda: self.debug_board("cdh"))
         self.debug_cdh_btn.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
+        # --- Bottom Right: Terminal Console ---
+        self.console_frame = ctk.CTkFrame(self)
+        self.console_frame.grid(row=1, column=1, columnspan=2, padx=20, pady=(0, 20), sticky="nsew")
+        self.console_frame.grid_columnconfigure(0, weight=1)
+        self.console_frame.grid_rowconfigure(1, weight=1)
+
+        self.console_label = ctk.CTkLabel(self.console_frame, text="Satellite Traffic Console", font=self.title_font)
+        self.console_label.grid(row=0, column=0, padx=20, pady=(10, 5), sticky="w")
+
+        self.terminal_box = ctk.CTkTextbox(self.console_frame, font=("Courier New", 12), fg_color="black", text_color="#00FF00")
+        self.terminal_box.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.terminal_box.insert("0.0", "--- Waiting for connection ---\n")
+        self.terminal_box.configure(state="disabled")
+        
         # Start background polling
+        self.after(1000, self.poll_unsolicited)
         self.check_status()
 
     def load_images(self):
@@ -201,6 +240,22 @@ class App(ctk.CTk):
         self.log_msg(f"Sending Debug to {board.upper()}...")
         self.api_post(f"/debug/{board}")
 
+    def sync_id(self, board):
+        self.log_msg(f"Syncing ID with {board.upper()}...")
+        def task():
+            try:
+                res = requests.post(f"{API_URL}/payload/sync_id/{board}")
+                if res.status_code == 200:
+                    data = res.json()
+                    msg_id = data.get("msg_id")
+                    self.log_msg(f"SUCCESS: Synced with {board.upper()}. New ID: {msg_id}")
+                    self.msgid_label.configure(text=f"Last Msg ID: {msg_id}")
+                else:
+                    self.log_msg(f"Error {res.status_code}: {res.text}")
+            except Exception as e:
+                self.log_msg(f"Request failed: {str(e)}")
+        threading.Thread(target=task).start()
+
     def reset_ids(self):
         self.log_msg("Resetting message IDs...")
         self.api_post("/payload/reset_ids")
@@ -211,12 +266,87 @@ class App(ctk.CTk):
 
     def run_inference(self):
         choice = self.image_choice.get()
-        if choice == "denby":
-            self.log_msg("Running Denby Inference (60s timeout)...")
-            self.api_post("/payload/infer/denby")
-        elif choice == "blk":
-            self.log_msg("Running Black Image Inference (60s timeout)...")
-            self.api_post("/payload/infer/blk")
+        name = self.result_name_entry.get().strip()
+        if not name:
+            self.log_msg("Error: Please enter a result name.")
+            return
+        
+        endpoint = f"/payload/infer/{choice}?name={name}"
+        self.log_msg(f"Triggering {choice.upper()} inference as '{name}'...")
+        
+        def task():
+            try:
+                res = requests.post(f"{API_URL}{endpoint}")
+                if res.status_code == 200:
+                    data = res.json()
+                    res_name = data.get("name")
+                    self.log_msg(f"SUCCESS: Inference triggered as '{res_name}'")
+                    # Auto-fill the fetch entry
+                    self.fetch_id_entry.delete(0, "end")
+                    self.fetch_id_entry.insert(0, str(res_name))
+                else:
+                    self.log_msg(f"Error {res.status_code}: {res.text}")
+            except Exception as e:
+                self.log_msg(f"Request failed: {str(e)}")
+        threading.Thread(target=task).start()
+
+    def fetch_result(self):
+        name = self.fetch_id_entry.get().strip()
+        if not name:
+            self.log_msg("Error: Please enter a result name to fetch.")
+            return
+        
+        self.log_msg(f"Fetching result for '{name}'...")
+        self.api_post(f"/payload/fetch_result/{name}")
+
+    def list_results(self):
+        self.log_msg("Listing all results on payload...")
+        def task():
+            try:
+                res = requests.get(f"{API_URL}/payload/list_results")
+                if res.status_code == 200:
+                    results = res.json().get("results", [])
+                    if results:
+                        self.log_msg("Results found:\n" + "\n".join(results))
+                    else:
+                        self.log_msg("No results found.")
+                else:
+                    self.log_msg(f"Error {res.status_code}: {res.text}")
+            except Exception as e:
+                self.log_msg(f"Request failed: {str(e)}")
+        threading.Thread(target=task).start()
+
+    def clear_results(self):
+        self.log_msg("Clearing all payload results...")
+        self.api_post("/payload/clear_results")
+
+    def poll_unsolicited(self):
+        def task():
+            try:
+                res = requests.get(f"{API_URL}/payload/unsolicited", timeout=2)
+                if res.status_code == 200:
+                    messages = res.json().get("messages", [])
+                    if messages:
+                        print(f"DEBUG: GUI received {len(messages)} messages")
+                        # Schedule GUI update on main thread
+                        self.after(0, lambda: self.update_terminal(messages))
+            except Exception as e:
+                print(f"DEBUG: GUI poll error: {e}")
+                pass
+        
+        # Start task thread
+        threading.Thread(target=task, daemon=True).start()
+        # Schedule next poll on main thread
+        self.after(500, self.poll_unsolicited)
+
+    def update_terminal(self, messages):
+        print(f"DEBUG: UI updating terminal with {len(messages)} messages")
+        self.terminal_box.configure(state="normal")
+        for msg in messages:
+            timestamp = time.strftime("[%H:%M:%S] ")
+            self.terminal_box.insert("end", f"{timestamp}{msg}\n")
+        self.terminal_box.see("end")
+        self.terminal_box.configure(state="disabled")
 
 if __name__ == "__main__":
     app = App()

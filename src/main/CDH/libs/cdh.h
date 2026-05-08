@@ -20,7 +20,7 @@
 // ========== Board Version ========== //
 // 1 = Clear NVS on boot (empty queue)
 // 2 = Retain NVS on boot (show queue contents)
-#define BOARD_VERSION 2
+#define BOARD_VERSION 1
 
 // ========== Pin Definitions ========== //
 

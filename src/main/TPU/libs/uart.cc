@@ -11,8 +11,10 @@
 static rx_cmd_buff_t rx_buff = {.state = RX_CMD_BUFF_STATE_START_BYTE_0, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .route_id = 0, .bus_msg_id = 0, .data = {0}};
 static tx_cmd_buff_t tx_buff = {.empty = 1, .start_index = 0, .end_index = 0, .size = CMD_MAX_LEN, .data = {0}};
 volatile uint8_t g_run_inference = 0;
-volatile uint16_t g_last_inference_msg_id = 0;
-volatile uint16_t g_fetch_inference_msg_id = 0;
+char g_inference_name[9] = {0};
+char g_fetch_name[9] = {0};
+volatile uint8_t g_clear_results = 0;
+volatile uint8_t g_list_results = 0;
 
 // --- Required TAB Protocol Implementations ---
 
@@ -51,17 +53,42 @@ extern "C"
             return 1;
         case VAR_CODE_CORAL_INFER_DENBY:
         case VAR_CODE_RUN_DEMO:
+            // Payload: [VAR_CODE, LEN(8), name[0..7]]
+            if (var_len >= 8) {
+                memcpy(g_inference_name, val_ptr, 8);
+                g_inference_name[8] = '\0';
+            } else {
+                strncpy(g_inference_name, "DENBY___", 9);
+            }
+            printf("UART CMD: Start Denby Inference -> name='%s'\r\n", g_inference_name);
             g_run_inference = 1;
-            g_last_inference_msg_id = rx_cmd_buff->bus_msg_id;
             return 1;
         case VAR_CODE_CORAL_INFER_BLK:
+            // Payload: [VAR_CODE, LEN(8), name[0..7]]
+            if (var_len >= 8) {
+                memcpy(g_inference_name, val_ptr, 8);
+                g_inference_name[8] = '\0';
+            } else {
+                strncpy(g_inference_name, "BLK_____", 9);
+            }
+            printf("UART CMD: Start Black Inference -> name='%s'\r\n", g_inference_name);
             g_run_inference = 2;
-            g_last_inference_msg_id = rx_cmd_buff->bus_msg_id;
             return 1;
         case VAR_CODE_FETCH_RESULT:
-            if (var_len >= 2) {
-                g_fetch_inference_msg_id = ((uint16_t)val_ptr[0] << 8) | val_ptr[1];
+            // Payload: [VAR_CODE, LEN(8), name[0..7]]
+            if (var_len >= 8) {
+                memcpy(g_fetch_name, val_ptr, 8);
+                g_fetch_name[8] = '\0';
+                printf("UART CMD: Fetch Result for '%s'\r\n", g_fetch_name);
             }
+            return 1;
+        case VAR_CODE_CLEAR_RESULTS:
+            printf("UART CMD: Clear All Results\r\n");
+            g_clear_results = 1;
+            return 1;
+        case VAR_CODE_LIST_RESULTS:
+            printf("UART CMD: List Results\r\n");
+            g_list_results = 1;
             return 1;
         default:
             return 0; // Unknown command, tab.c will NACK

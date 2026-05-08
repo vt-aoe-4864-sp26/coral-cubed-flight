@@ -110,10 +110,24 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
 
         if (dest_id == COMG)
         {
+            // First, copy to outgoing buffer so it's routed to host USB
+            for (size_t i = 0; i < rx_cmd_buff_o->end_index; i++)
+            {
+                tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
+            }
+            tx_cmd_buff_o->start_index = 0;
+            tx_cmd_buff_o->end_index = rx_cmd_buff_o->end_index;
+            tx_cmd_buff_o->empty = 0;
+
+            // Then process it locally (might clear/modify rx_cmd_buff_o)
             write_reply(rx_cmd_buff_o, tx_cmd_buff_o);
+            
+            // Ensure empty is 0 so route_tx_packet actually sends it to the host
+            tx_cmd_buff_o->empty = 0; 
         }
         else
         {
+            // Transparent forward for GND, DBG, or satellite destinations
             for (size_t i = 0; i < rx_cmd_buff_o->end_index; i++)
             {
                 tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];
@@ -137,12 +151,12 @@ void route_tx_packet(tx_cmd_buff_t *tx_cmd_buff_o)
 
 #if CURRENT_BOARD_ROLE == ROLE_GROUND_STATION
     // Ground Station Topology
-    if (dest_id == GND)
+    if (dest_id == GND || dest_id == COMG || dest_id == DBG)
     {
         target_uart = uart_gnd_dev; // Local USB
     }
     else if (dest_id == CDH || dest_id == PLD || dest_id == COM)
-    {                      // CHANGED: Send COM to Radio
+    {                      // Send to Radio
         send_to_radio = 1; // Over the air to Satellite
     }
 #else

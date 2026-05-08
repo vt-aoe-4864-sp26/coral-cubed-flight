@@ -3,6 +3,8 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
 import threading
+import json
+import os
 
 from demo import PCB, GND
 
@@ -11,6 +13,20 @@ app = FastAPI(title="Flatsat Operations API", description="API for controlling t
 # Global PCB instance and lock to ensure thread safety when communicating over serial
 flatsat: Optional[PCB] = None # TODO: Update for optional source ID calls
 serial_lock = threading.Lock()
+MSG_ID_FILE = "msg_id.json"
+
+def save_msg_id(msg_id):
+    with open(MSG_ID_FILE, "w") as f:
+        json.dump({"msg_id": msg_id}, f)
+
+def load_msg_id():
+    if os.path.exists(MSG_ID_FILE):
+        try:
+            with open(MSG_ID_FILE, "r") as f:
+                return json.load(f).get("msg_id", 0)
+        except:
+            return 0
+    return 0
 
 class ConnectRequest(BaseModel):
     port: str = "/dev/ttyACM0"
@@ -35,9 +51,11 @@ def connect(req: ConnectRequest):
     global flatsat
     with serial_lock:
         try:
-            flatsat = PCB(port=req.port, BAUD=req.baud, ID=GND)
+            initial_id = load_msg_id()
+            flatsat = PCB(port=req.port, BAUD=req.baud, ID=GND, msgid=initial_id)
             flatsat._wait_for_serial(timeout=10)
-            return {"status": "connected", "port": req.port}
+            flatsat.start()
+            return {"status": "connected", "port": req.port, "msg_id": initial_id}
         except Exception as e:
             flatsat = None
             error_msg = str(e)
@@ -61,8 +79,8 @@ def handshake():
             # We can't let it exit the server. So we bypass `flatsat.handshake()` 
             # and just call `send_alive` and wait for a response, or just call it directly.
             # But let's just do it manually here to avoid exiting.
-            from demo import TxCmd, COMMON_DATA_OPCODE, COM
-            cmd = TxCmd(COMMON_DATA_OPCODE, flatsat.HWID, flatsat.msgid, flatsat.ID, COM)
+            from demo import TxCmd, COMMON_DATA_OPCODE, COMG
+            cmd = TxCmd(COMMON_DATA_OPCODE, flatsat.HWID, flatsat.msgid, flatsat.ID, COMG)
             cmd.common_data([0x00,0x01,0x01]) # send alive
             success = flatsat._send_and_wait(cmd, timeout=2.0, retries=5)
             if success:
@@ -104,34 +122,72 @@ def payload_power(req: BooleanRequest):
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/payload/infer/denby")
-def payload_infer_denby():
+def payload_infer_denby(name: str = "RESULT01"):
     if not flatsat:
         raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
     
     with serial_lock:
         try:
-            flatsat.cdh_coral_infer_denby()
-            success = flatsat.wait_for_inference(timeout=60.0)
-            if success:
-                return {"status": "Denby Inference completed"}
-            else:
-                raise HTTPException(status_code=500, detail="Timeout waiting for inference")
+            flatsat.cdh_coral_infer_denby(name=name)
+            return {"status": "Denby Inference triggered", "name": name}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/payload/infer/blk")
-def payload_infer_blk():
+def payload_infer_blk(name: str = "RESULT01"):
     if not flatsat:
         raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
     
     with serial_lock:
         try:
-            flatsat.cdh_coral_infer_blk()
-            success = flatsat.wait_for_inference(timeout=60.0)
+            flatsat.cdh_coral_infer_blk(name=name)
+            return {"status": "Black Image Inference triggered", "name": name}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/fetch_result/{name}")
+def payload_fetch_result(name: str):
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            success = flatsat.cdh_coral_fetch_result(name)
             if success:
-                return {"status": "Black Image Inference completed"}
+                return {"status": f"Result for {name} retrieved"}
             else:
-                raise HTTPException(status_code=500, detail="Timeout waiting for inference")
+                raise HTTPException(status_code=500, detail=f"Failed to retrieve result for {name}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/clear_results")
+def payload_clear_results():
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            flatsat.cdh_coral_clear_results()
+            save_msg_id(flatsat.msgid)
+            return {"status": "Payload inference results cleared"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/payload/list_results")
+def payload_list_results():
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            # wait_for_inference returns a string for the list results command
+            results = flatsat.cdh_coral_list_results()
+            if results:
+                # results is likely "ID name1: content" or similar if we use wait_for_inference
+                # but we updated coral_main.cc to send just the list
+                # actually, wait_for_inference prints and returns data
+                return {"results": results.split('\n') if results else []}
+            return {"results": []}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -193,6 +249,42 @@ def debug_board(board: str):
                 raise HTTPException(status_code=400, detail=f"Invalid board: {board}")
             
             flatsat.common_debug(message="check", dst=dst)
+            save_msg_id(flatsat.msgid)
             return {"status": f"Debug message sent to {board}"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/payload/sync_id/{board}")
+def payload_sync_id(board: str):
+    if not flatsat:
+        raise HTTPException(status_code=400, detail="Not connected. Call /connect first.")
+    
+    with serial_lock:
+        try:
+            from demo import CDH, COM, COMG
+            dst_map = {"cdh": CDH, "com": COM, "comg": COMG}
+            dst = dst_map.get(board.lower())
+            if dst is None:
+                raise HTTPException(status_code=400, detail=f"Invalid board: {board}")
+            
+            success = flatsat.sync_message_id(dst=dst)
+            if success:
+                save_msg_id(flatsat.msgid)
+                return {"status": f"Synced with {board}", "msg_id": flatsat.msgid}
+            else:
+                raise HTTPException(status_code=500, detail=f"Sync failed with {board}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/payload/unsolicited")
+def get_unsolicited_messages():
+    if not flatsat:
+        return {"messages": []}
+    
+    messages = []
+    try:
+        while not flatsat.unsolicited_queue.empty():
+            messages.append(flatsat.unsolicited_queue.get_nowait())
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

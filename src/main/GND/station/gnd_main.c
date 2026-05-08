@@ -48,18 +48,13 @@ int main(void)
     // Only boot usb device/UART if something is connected within 'usb_enumeration_timeout'
     if (device_is_ready(uart_gnd_dev) && usb_enable(NULL) == 0)
     {
-        int usb_enumeration_timeout = 100;
-        while (!dtr && usb_enumeration_timeout > 0)
+        while (!dtr)
         {
             uart_line_ctrl_get(uart_gnd_dev, UART_LINE_CTRL_DTR, &dtr);
             k_msleep(100);
-            usb_enumeration_timeout--;
+            gpio_pin_toggle_dt(&led1);
         }
-        if (dtr)
-        {
-            init_usb_uart(); // Enable USB interrupts safely!
-            
-        }
+        init_usb_uart(); // Enable USB interrupts safely!
     }
 
     while (1)

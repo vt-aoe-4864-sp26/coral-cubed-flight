@@ -10,7 +10,7 @@
 # See the top-level LICENSE file for the license.
 
 import serial 
-import sys, os, time, pathlib
+import sys, os, time, pathlib, threading, queue
 
 from utils.path_utils import get_repo_root
 from utils.tab import *
@@ -25,6 +25,75 @@ class PCB:
         
         self.rx_cmd_buff = RxCmdBuff()
         self.serial_port = None
+        self.serial_lock = threading.Lock()
+        
+        self.unsolicited_queue = queue.Queue()
+        self.ack_events = {} # msgid -> threading.Event()
+        self.ack_packets = {} # msgid -> RxCmdBuff
+        self.stop_event = threading.Event()
+        self.worker_thread = None
+
+    def start(self):
+        if not self.serial_port:
+            self._wait_for_serial()
+        
+        self.stop_event.clear()
+        self.worker_thread = threading.Thread(target=self._serial_worker, daemon=True)
+        self.worker_thread.start()
+        print("Serial worker thread started.")
+
+    def stop(self):
+        self.stop_event.set()
+        if self.worker_thread:
+            self.worker_thread.join(timeout=1.0)
+            
+    def _serial_worker(self):
+        worker_rx_buff = RxCmdBuff()
+        while not self.stop_event.is_set():
+            try:
+                # Use the lock to check in_waiting and read
+                with self.serial_lock:
+                    if self.serial_port and self.serial_port.in_waiting > 0:
+                        waiting = self.serial_port.in_waiting
+                        bytes_read = self.serial_port.read(waiting)
+                        print(f"DEBUG: Worker read {len(bytes_read)} bytes: {bytes_read.hex()}")
+                    else:
+                        bytes_read = b''
+                
+                if bytes_read:
+                    for b in bytes_read:
+                        worker_rx_buff.append_byte(b)
+                        print(f"DEBUG: Byte 0x{b:02x} -> State {worker_rx_buff.state}")
+                        if worker_rx_buff.state == RxCmdBuffState.COMPLETE:
+                            msg_id = worker_rx_buff.bus_msg_id
+                            
+                            # Log all incoming packets for visibility
+                            print(f"\n<<< Received Packet: ID=0x{msg_id:04x}, Opcode=0x{worker_rx_buff.data[OPCODE_INDEX]:02x}")
+                            
+                            # Sync local ID if it doesn't match
+                            if msg_id != self.msgid:
+                                print(f"Syncing local ID (0x{self.msgid:04x}) to satellite ID (0x{msg_id:04x})")
+                                self.msgid = msg_id
+                            
+                            # Always put in traffic queue for GUI console
+                            packet_str = str(worker_rx_buff)
+                            self.unsolicited_queue.put(packet_str)
+                            
+                            # Dispatch to ACK waiters
+                            if msg_id in self.ack_events:
+                                # Copy the buffer state
+                                self.ack_packets[msg_id] = RxCmdBuff()
+                                self.ack_packets[msg_id].data = list(worker_rx_buff.data)
+                                self.ack_packets[msg_id].state = RxCmdBuffState.COMPLETE
+                                self.ack_packets[msg_id].bus_msg_id = msg_id
+                                self.ack_events[msg_id].set()
+                            
+                            worker_rx_buff.clear()
+                else:
+                    time.sleep(0.01)
+            except Exception as e:
+                print(f"Serial worker error: {e}")
+                time.sleep(1.0)
 
     def _wait_for_serial(self, timeout=30):
         if not self.dev:
@@ -43,58 +112,43 @@ class PCB:
     def _send_and_wait(self, cmd, timeout=5.0, retries=3):
         """helper to handle the repetitive tx/rx loop for all commands."""
         
-        # Log the command BEFORE sending so you know what is happening if it times out
+        # Log the command BEFORE sending
         print('txcmd: ' + str(cmd))
         
+        current_id = self.msgid
+        
         for attempt in range(retries):
-            start_time = time.time()
-            self.rx_cmd_buff.clear()
+            # Create an event for this message ID
+            ack_event = threading.Event()
+            self.ack_events[current_id] = ack_event
             
-            # 1. Purge the OS buffer of any stale ACKs/echoes before transmitting
-            self.serial_port.reset_input_buffer()
-            
-            # 2. Blast the entire payload at once for max USB throughput
+            # Blast the payload
             packet_len = cmd.get_byte_count()
-            self.serial_port.write(bytes(cmd.data[:packet_len]))
+            with self.serial_lock:
+                self.serial_port.write(bytes(cmd.data[:packet_len]))
             
-            # 3. Wait for the complete reply
-            reply_found = False
-            while not reply_found:
+            # Wait for the worker thread to signal completion
+            if ack_event.wait(timeout=timeout):
+                reply = self.ack_packets.get(current_id)
+                print('reply: ' + str(reply) + '\n')
                 
-                # Check how many bytes the OS has received
-                waiting = self.serial_port.in_waiting
-                if waiting > 0:
-                    # Read them all in one chunk, then feed them to the state machine
-                    bytes_read = self.serial_port.read(waiting)
-                    for b in bytes_read:
-                        self.rx_cmd_buff.append_byte(b)
-                        
-                        # 4. Check if the state machine successfully completed a packet
-                        if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
-                            if self.rx_cmd_buff.bus_msg_id == self.msgid:
-                                print('reply: ' + str(self.rx_cmd_buff) + '\n')
-                                
-                                # cleanup and increment for next message
-                                cmd.clear()
-                                self.rx_cmd_buff.clear()
-                                self.msgid += 1
-                                time.sleep(1.0)
-                                return True
-                            else:
-                                print(f"ignoring stale reply with msg_id 0x{self.rx_cmd_buff.bus_msg_id:04x}")
-                                self.rx_cmd_buff.clear()
-                else:
-                    # Yield the thread briefly so we don't cook the CPU
-                    time.sleep(0.001)
-
-                if time.time() - start_time > timeout:
-                    print(f"timeout waiting for reply on attempt {attempt + 1}/{retries}")
-                    break
-
+                # Cleanup
+                del self.ack_events[current_id]
+                if current_id in self.ack_packets:
+                    del self.ack_packets[current_id]
+                
+                cmd.clear()
+                self.msgid += 1
+                time.sleep(0.5) # Reduced delay as we are async now
+                return True
+            else:
+                print(f"timeout waiting for reply on attempt {attempt + 1}/{retries}")
+                if current_id in self.ack_events:
+                    del self.ack_events[current_id]
+        
         # If we exit the for-loop, all retries failed
         print("failed to receive valid reply after all retries.\n")
         cmd.clear()
-        self.rx_cmd_buff.clear()
         self.msgid += 1
         return False
 
@@ -171,6 +225,34 @@ class PCB:
         packet_len = cmd.get_byte_count()
         self.serial_port.write(bytes(cmd.data[:packet_len]))
         self.msgid = 0
+
+    def sync_message_id(self, dst=COM):
+        # We send a SYNC with msg_id 0 to request the current board ID
+        cmd = TxCmd(COMMON_SYNC_MSG_ID_OPCODE, self.HWID, 0x0000, self.ID, dst)
+        
+        # We need a custom wait logic that extracts the ID from the ACK
+        print(f"Syncing message ID with {dst}...")
+        start_time = time.time()
+        self.rx_cmd_buff.clear()
+        self.serial_port.reset_input_buffer()
+        packet_len = cmd.get_byte_count()
+        self.serial_port.write(bytes(cmd.data[:packet_len]))
+        
+        while time.time() - start_time < 2.0:
+            if self.serial_port.in_waiting > 0:
+                bytes_read = self.serial_port.read(self.serial_port.in_waiting)
+                for b in bytes_read:
+                    self.rx_cmd_buff.append_byte(b)
+                    if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
+                        # Extract the ID from the ACK packet's MsgID field
+                        new_id = self.rx_cmd_buff.bus_msg_id
+                        print(f"Synced! New Message ID: {new_id}")
+                        self.msgid = new_id + 1 # Increment for next message
+                        self.rx_cmd_buff.clear()
+                        return True
+            time.sleep(0.01)
+        print("Sync failed.")
+        return False
         
     def clear_cdh_queue(self):
         cmd = TxCmd(COMMON_CLEAR_QUEUE_OPCODE, self.HWID, self.msgid, self.ID, CDH)
@@ -202,17 +284,47 @@ class PCB:
         cmd.common_data([0x09, 0x01, val])
         self._send_and_wait(cmd)
         
-    def cdh_coral_infer_denby(self, enable=True):
-        val = 0x01 if enable else 0x02
+    def cdh_coral_infer_denby(self, name="RESULT01"):
+        # Ensure name is exactly 8 chars
+        name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
-        cmd.common_data([0x0A, 0x01, val])
+        cmd.common_data([0x0A, 0x08] + name_bytes)
         self._send_and_wait(cmd)
 
-    def cdh_coral_infer_blk(self, enable=True):
-        val = 0x01 if enable else 0x02
+    def cdh_coral_infer_blk(self, name="RESULT01"):
+        # Ensure name is exactly 8 chars
+        name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
-        cmd.common_data([0x0D, 0x01, val])
+        cmd.common_data([0x0D, 0x08] + name_bytes)
         self._send_and_wait(cmd)
+
+    def cdh_coral_fetch_result(self, name):
+        # name is the 8-char string of the inference result
+        name_bytes = list(name[:8].ljust(8, '_').encode('ascii'))
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
+        # Payload: [VAR_CODE_FETCH_RESULT (0x0E), LEN (0x08), name[0..7]]
+        cmd.common_data([0x0E, 0x08] + name_bytes)
+        # We wait for a reply, which will be the inference result message from the TPU
+        success = self._send_and_wait(cmd)
+        if success:
+             # Wait for the autonomous result packet
+             return self.wait_for_inference(timeout=5.0)
+        return False
+
+    def cdh_coral_clear_results(self):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
+        # Payload: [VAR_CODE_CLEAR_RESULTS (0x0F), LEN (0x01), 0x01]
+        cmd.common_data([0x0F, 0x01, 0x01])
+        self._send_and_wait(cmd)
+
+    def cdh_coral_list_results(self):
+        cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)
+        # Payload: [VAR_CODE_LIST_RESULTS (0x10), LEN (0x00)]
+        cmd.common_data([0x10, 0x00])
+        success = self._send_and_wait(cmd)
+        if success:
+             return self.wait_for_inference(timeout=5.0)
+        return False
 
     def coral_run_demo(self, enable=True):
         cmd = TxCmd(COMMON_DATA_OPCODE, self.HWID, self.msgid, self.ID, PLD)

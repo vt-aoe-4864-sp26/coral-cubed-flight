@@ -27,6 +27,8 @@
 // Opcodes
 #define COMMON_ACK_OPCODE                   ((uint8_t)0x10)
 #define COMMON_NACK_OPCODE                  ((uint8_t)0xff)
+#define COMMON_CLEAR_QUEUE_OPCODE           ((uint8_t)0x1B)
+#define COMMON_SYNC_MSG_ID_OPCODE           ((uint8_t)0x1C)
 #define COMMON_DEBUG_OPCODE                 ((uint8_t)0x11)
 #define COMMON_DATA_OPCODE                  ((uint8_t)0x16)
 #define BOOTLOADER_ACK_OPCODE               ((uint8_t)0x01)
