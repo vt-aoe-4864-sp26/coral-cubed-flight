@@ -128,6 +128,7 @@ void process_rx_packet(rx_cmd_buff_t *rx_cmd_buff_o, tx_cmd_buff_t *tx_cmd_buff_
         else
         {
             // Transparent forward for GND, DBG, or satellite destinations
+            printk("[GND] Forwarding packet to host: Dest=0x%01x, ID=0x%04x\n", dest_id, rx_cmd_buff_o->bus_msg_id);
             for (size_t i = 0; i < rx_cmd_buff_o->end_index; i++)
             {
                 tx_cmd_buff_o->data[i] = rx_cmd_buff_o->data[i];

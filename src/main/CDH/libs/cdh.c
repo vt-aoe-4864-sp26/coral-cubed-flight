@@ -258,6 +258,9 @@ int handle_common_data(common_data_t common_data_buff_i, rx_cmd_buff_t *rx_cmd_b
   case VAR_CODE_CORAL_CAM_ON:
   case VAR_CODE_CORAL_INFER_DENBY:
   case VAR_CODE_CORAL_INFER_BLK:
+  case VAR_CODE_FETCH_RESULT:
+  case VAR_CODE_CLEAR_RESULTS:
+  case VAR_CODE_LIST_RESULTS:
     msg_to_pay(rx_cmd_buff, tx_cmd_buff, COMMON_DATA_OPCODE, common_data_buff_i.data, common_data_buff_i.end_index);
     return 1;
 

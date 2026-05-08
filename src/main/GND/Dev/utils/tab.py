@@ -35,7 +35,23 @@ COMMON_RESET_MSG_ID_OPCODE          = 0x1A
 COMMON_CLEAR_QUEUE_OPCODE           = 0x1B
 COMMON_SYNC_MSG_ID_OPCODE            = 0x1C
 
-VAR_CODE_LIST_RESULTS               = 0x10
+VAR_CODE_ALIVE          = 0x00
+VAR_CODE_COM_EN         = 0x01
+VAR_CODE_PAY_EN         = 0x02
+VAR_CODE_RF_EN          = 0x03
+VAR_CODE_RF_TX          = 0x04
+VAR_CODE_RF_RX          = 0x05
+VAR_CODE_BLINK_CDH      = 0x06
+VAR_CODE_BLINK_COM      = 0x07
+VAR_CODE_CORAL_WAKE     = 0x08
+VAR_CODE_CORAL_CAM_ON   = 0x09
+VAR_CODE_CORAL_INFER_DENBY = 0x0A
+VAR_CODE_RUN_DEMO       = 0x0B
+VAR_CODE_INFERENCE_RESULT = 0x0C
+VAR_CODE_CORAL_INFER_BLK   = 0x0D
+VAR_CODE_FETCH_RESULT   = 0x0E
+VAR_CODE_CLEAR_RESULTS  = 0x0F
+VAR_CODE_LIST_RESULTS   = 0x10
 
 ## Route Nibble IDs
 GND    = 0x00
@@ -312,8 +328,44 @@ def cmd_bytes_to_str(data):
     pld_str += '"'
   elif data[OPCODE_INDEX] == COMMON_DATA_OPCODE:
     cmd_str += 'common_data'
-    for i in range(0,data[MSG_LEN_INDEX]-0x06):
-      pld_str += ' 0x{:02x}'.format(data[PLD_START_INDEX+i])
+    var_code = data[PLD_START_INDEX]
+    var_len = data[PLD_START_INDEX+1]
+    
+    var_code_map = {
+        VAR_CODE_ALIVE: "ALIVE",
+        VAR_CODE_COM_EN: "COM_EN",
+        VAR_CODE_PAY_EN: "PAY_EN",
+        VAR_CODE_RF_EN: "RF_EN",
+        VAR_CODE_RF_TX: "RF_TX",
+        VAR_CODE_RF_RX: "RF_RX",
+        VAR_CODE_BLINK_CDH: "BLINK_CDH",
+        VAR_CODE_BLINK_COM: "BLINK_COM",
+        VAR_CODE_CORAL_WAKE: "CORAL_WAKE",
+        VAR_CODE_CORAL_CAM_ON: "CORAL_CAM_ON",
+        VAR_CODE_CORAL_INFER_DENBY: "INFER_DENBY",
+        VAR_CODE_RUN_DEMO: "RUN_DEMO",
+        VAR_CODE_INFERENCE_RESULT: "INFERENCE_RESULT",
+        VAR_CODE_CORAL_INFER_BLK: "INFER_BLK",
+        VAR_CODE_FETCH_RESULT: "FETCH_RESULT",
+        VAR_CODE_CLEAR_RESULTS: "CLEAR_RESULTS",
+        VAR_CODE_LIST_RESULTS: "LIST_RESULTS"
+    }
+    
+    var_name = var_code_map.get(var_code, f"0x{var_code:02x}")
+    pld_str = f" {var_name}(len={var_len}):"
+    
+    # Try to decode as string if it looks like one, or just hex
+    payload_data = data[PLD_START_INDEX+2:PLD_START_INDEX+2+var_len]
+    try:
+        # If all bytes are printable ASCII
+        if all(32 <= b <= 126 for b in payload_data):
+            pld_str += ' "' + "".join(chr(b) for b in payload_data) + '"'
+        else:
+            for b in payload_data:
+                pld_str += ' 0x{:02x}'.format(b)
+    except:
+        for b in payload_data:
+            pld_str += ' 0x{:02x}'.format(b)
   elif data[OPCODE_INDEX] == BOOTLOADER_ACK_OPCODE:
     cmd_str += 'bootloader_ack'
     if (data[MSG_LEN_INDEX] == 0x07):

@@ -196,9 +196,9 @@ void radio_thread_entry(void *p1, void *p2, void *p3)
             if (!pending_msg.active)
             {
                 int is_ack = (new_tx.data[OPCODE_INDEX] == COMMON_ACK_OPCODE ||
-                              new_tx.data[OPCODE_INDEX] == COMMON_NACK_OPCODE ||
-                              new_tx.data[OPCODE_INDEX] == BOOTLOADER_ACK_OPCODE ||
-                              new_tx.data[OPCODE_INDEX] == BOOTLOADER_NACK_OPCODE);
+                               new_tx.data[OPCODE_INDEX] == COMMON_NACK_OPCODE ||
+                               new_tx.data[OPCODE_INDEX] == BOOTLOADER_ACK_OPCODE ||
+                               new_tx.data[OPCODE_INDEX] == BOOTLOADER_NACK_OPCODE);
 
                 if (!is_ack) {
                     pending_msg.active = 1;
@@ -283,6 +283,10 @@ void radio_rx_thread_entry(void *p1, void *p2, void *p3)
                         continue;
                     }
                     // ---------------------------
+                    
+                    printk("[RADIO] RX Packet: Src=0x%01x, Dest=0x%01x, Op=0x%02x, ID=0x%04x\n", 
+                           src_id, (radio_rx_tab.data[ROUTE_INDEX] & 0xF0) >> 4,
+                           radio_rx_tab.data[OPCODE_INDEX], radio_rx_tab.bus_msg_id);
 
                     k_mutex_lock(&pending_msg_mutex, K_FOREVER);
                     if (pending_msg.active &&

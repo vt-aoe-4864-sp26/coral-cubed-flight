@@ -28,6 +28,7 @@ class PCB:
         self.serial_lock = threading.Lock()
         
         self.unsolicited_queue = queue.Queue()
+        self.raw_packet_queue = queue.Queue()
         self.ack_events = {} # msgid -> threading.Event()
         self.ack_packets = {} # msgid -> RxCmdBuff
         self.stop_event = threading.Event()
@@ -87,6 +88,9 @@ class PCB:
                                 self.ack_packets[msg_id].state = RxCmdBuffState.COMPLETE
                                 self.ack_packets[msg_id].bus_msg_id = msg_id
                                 self.ack_events[msg_id].set()
+                            else:
+                                # Put in raw queue for unsolicited/autonomous messages
+                                self.raw_packet_queue.put(list(worker_rx_buff.data))
                             
                             worker_rx_buff.clear()
                 else:
@@ -335,29 +339,29 @@ class PCB:
     def wait_for_inference(self, timeout=60.0):
         print("waiting for autonomous inference results...")
         start_time = time.time()
-        self.rx_cmd_buff.clear()
         
         while time.time() - start_time < timeout:
-            if self.serial_port.in_waiting > 0:
-                bytes_read = self.serial_port.read(1)
-                for b in bytes_read:
-                    self.rx_cmd_buff.append_byte(b)
-                    
-                    if self.rx_cmd_buff.state == RxCmdBuffState.COMPLETE:
-                        if self.rx_cmd_buff.data[8] == COMMON_DATA_OPCODE:
-                            if self.rx_cmd_buff.data[9] == 0x0c: # VAR_CODE_INFERENCE_RESULT
-                                result_len = self.rx_cmd_buff.data[10]
-                                result_bytes = self.rx_cmd_buff.data[11:11+result_len]
-                                try:
-                                    result_str = bytes(result_bytes).decode('utf-8')
-                                    print(f"--- Inference Result: {result_str} ---")
-                                except UnicodeDecodeError:
-                                    print(f"--- Inference Result (raw bytes): {result_bytes} ---")
-                                self.rx_cmd_buff.clear()
-                                return True
-                        self.rx_cmd_buff.clear()
-            else:
-                time.sleep(0.001)
+            try:
+                # Check for packets in the raw queue
+                packet_data = self.raw_packet_queue.get(timeout=0.1)
+                
+                if packet_data[OPCODE_INDEX] == COMMON_DATA_OPCODE:
+                    # PLD_START_INDEX is 9
+                    if packet_data[9] == VAR_CODE_INFERENCE_RESULT:
+                        result_len = packet_data[10]
+                        result_bytes = packet_data[11:11+result_len]
+                        try:
+                            result_str = bytes(result_bytes).decode('utf-8')
+                            print(f"--- Inference Result: {result_str} ---")
+                            return result_str
+                        except UnicodeDecodeError:
+                            raw_str = str(result_bytes)
+                            print(f"--- Inference Result (raw bytes): {raw_str} ---")
+                            return raw_str
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"Error in wait_for_inference: {e}")
                 
         print("timeout waiting for inference result.\n")
         return False

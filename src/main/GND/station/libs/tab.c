@@ -230,9 +230,11 @@ void write_reply(rx_cmd_buff_t* rx_cmd_buff_o, tx_cmd_buff_t* tx_cmd_buff_o) {
 
         if (check_and_clear_pending_id(incoming_id)) {
             // It's a reply to our command. Close the loop silently.
+            printk("[TAB] ACK consumed: ID=0x%04x\n", incoming_id);
             send_reply = 0; 
         } else {
             // Unsolicited ACK or timed-out request. Drop it silently to prevent ACK storms.
+            printk("[TAB] Unsolicited ACK: ID=0x%04x\n", incoming_id);
             send_reply = 0;
         }
         break;

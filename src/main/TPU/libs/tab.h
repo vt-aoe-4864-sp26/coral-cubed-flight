@@ -97,7 +97,7 @@ typedef struct rx_cmd_buff {
   size_t              end_index;         
   const size_t        size;              
   uint8_t             route_id;          
-  uint8_t             bus_msg_id;        
+  uint16_t            bus_msg_id;        
   uint8_t             data[CMD_MAX_LEN]; 
 } rx_cmd_buff_t;
 
